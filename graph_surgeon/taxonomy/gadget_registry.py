@@ -76,7 +76,7 @@ class GadgetDefinition:
     
     # Attack Coverage
     attacks_enabled: List[str]  # Attack types this gadget enables
-    severity_base: str          # HIGH, MEDIUM, LOW - base severity
+    structural_significance: str  # PRIMARY, SECONDARY, TERTIARY, EXCEPTIONAL, MITIGATING
     
     # Versioning
     version: str
@@ -87,6 +87,18 @@ class GadgetDefinition:
     chainable_with: List[str] = field(default_factory=list)
     conflicts_with: List[str] = field(default_factory=list)
     notes: str = ""
+
+    @property
+    def severity_base(self) -> str:
+        """Deprecated alias for structural_significance (legacy tier labels)."""
+        _legacy = {
+            "PRIMARY": "HIGH",
+            "SECONDARY": "MEDIUM",
+            "TERTIARY": "LOW",
+            "EXCEPTIONAL": "CRITICAL",
+            "MITIGATING": "DEFENSIVE",
+        }
+        return _legacy.get(self.structural_significance, self.structural_significance)
 
 
 # =============================================================================
@@ -126,15 +138,15 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         attacks_enabled=["adversarial_patch", "lavan", "universal_perturbation", 
                         "feature_space_attacks", "dpatch", "aco_patch", "watermark_patch",
                         "trojan_texture", "copy_paste"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.2.0",
         changelog=[
             "1.0.0 (2026-01-19): Initial implementation",
-            "1.1.0 (2026-01-19): Added severity modifier based on attention presence",
+            "1.1.0 (2026-01-19): Added composition modifier based on attention presence",
             "1.2.0 (2026-01-19): Added 6 pattern-confirming papers from Phase 4 categorization",
         ],
         chainable_with=["ALIASING_DOWNSAMPLE", "NO_SPATIAL_ATTENTION"],
-        notes="Canonical patch attack vulnerability. Nearly universal in CNN classifiers."
+        notes="Canonical patch attack landscape motif. Nearly universal in CNN classifiers."
     ),
     
     "ALIASING_DOWNSAMPLE": GadgetDefinition(
@@ -173,16 +185,16 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
                         # Light-based attacks (covered by aliasing mechanism):
                         "light_attack", "projector_attack", "slm_attack", "advlb",
                         "spaa", "opad", "adversarial_shadow", "slap", "adversarial_rain"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.3.0",
         changelog=[
             "1.0.0 (2026-01-19): Initial implementation",
-            "1.1.0 (2026-01-19): Increased severity for object detectors per paper 107",
+            "1.1.0 (2026-01-19): Raised structural significance for object detectors per paper 107",
             "1.2.0 (2026-01-19): Added 9 pattern-confirming papers from Phase 4 categorization",
             "1.3.0 (2026-01-19): Added light-based attacks coverage (10 papers analyzed)",
         ],
         chainable_with=["GAP_FC_HEAD", "OBJECTNESS_HEAD", "AGGRESSIVE_EARLY_DOWNSAMPLING"],
-        notes="Critical for physical-world attack viability. Anti-aliasing is necessary "
+        notes="Important for physical-world attack viability. Anti-aliasing is necessary "
               "but not sufficient defense. Also covers light-based attacks (shadows, "
               "projections, illumination) as these create frequency artifacts that alias."
     ),
@@ -208,7 +220,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["amplified_patch", "multi_scale_patch", "sparse_attacks", "gan_attacks"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.1.0",
         changelog=[
             "1.0.0 (2026-01-19): Initial implementation",
@@ -237,7 +249,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["multi_scale_pgd", "universal_perturbation", 
                         "transfer_attacks", "dpatch", "invisible_cloak"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.2.0",
         changelog=[
             "1.0.0 (2026-01-19): Initial implementation",
@@ -266,7 +278,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["pgd", "cw", "momentum_attacks", "transfer_attacks"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.1.0",
         changelog=[
             "1.0.0 (2026-01-19): Initial implementation",
@@ -293,11 +305,11 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["multi_scale_pgd", "universal_perturbation"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["AMPLIFIER", "LARGE_KERNEL"],
-        notes="Less severe than HIGH_FANIN_FUSION but still enables multi-scale attacks."
+        notes="Lower structural significance than HIGH_FANIN_FUSION but still enables multi-scale attacks."
     ),
     
     "AMPLIFIER": GadgetDefinition(
@@ -316,7 +328,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["sparse_attacks", "one_pixel", "patch_attacks", "pgd"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["FUSION_POINT", "DOWNSAMPLER"],
@@ -328,7 +340,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         name="Stride-2 Downsampler",
         category=GadgetCategory.DOWNSAMPLING,
         description="Stride-2 Conv not in early layers, without anti-aliasing. "
-                   "Contributes to frequency attack vulnerability.",
+                   "Contributes to frequency attack landscape.",
         detection_logic="Detect Conv with strides >= 2 in middle/late layers without "
                        "preceding blur operation.",
         research_basis=[
@@ -339,11 +351,11 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["frequency_attacks", "fourier_attacks", "patch_survivability"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["AMPLIFIER", "FUSION_POINT"],
-        notes="Less severe than early aliasing but still contributes to frequency attacks."
+        notes="Lower structural significance than early aliasing but still contributes to frequency attacks."
     ),
     
     "NORMALIZER": GadgetDefinition(
@@ -364,7 +376,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["distribution_shift_attacks", "domain_attacks",
                         "light_attacks", "shadow_attacks", "illumination_attacks"],
-        severity_base="LOW",
+        structural_significance="TERTIARY",
         version="1.1.0",
         changelog=[
             "1.0.0 (2026-01-19): Initial implementation",
@@ -392,7 +404,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["patch_attacks", "gradient_steering"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["FUSION_POINT"],
@@ -414,11 +426,11 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["feature_space_attacks", "universal_perturbation", "logit_attacks"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["EXTRACTION_SURFACE"],
-        notes="Nearly universal in classifiers. Severity depends on preceding architecture."
+        notes="Nearly universal in classifiers. Structural significance depends on preceding architecture."
     ),
     
     "EXTRACTION_SURFACE": GadgetDefinition(
@@ -437,7 +449,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["model_extraction", "membership_inference"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["LINEAR_HEAD"],
@@ -451,7 +463,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         description="Conditional operations (Where, If, Equal) in the computational graph "
                    "that could implement trigger-based backdoors. These operations can "
                    "detect specific input patterns and conditionally route to malicious outputs. "
-                   "Their presence is a CRITICAL indicator of potential ShadowLogic backdoors.",
+                   "Their presence is a strong indicator of potential ShadowLogic backdoors.",
         detection_logic="Detect Where, If, Equal, Less, Greater, And, Or, Not, Xor nodes. "
                        "These are extremely rare in standard neural networks.",
         research_basis=[
@@ -465,20 +477,20 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["shadowlogic", "backdoor_triggers", "output_override", 
                         "trigger_detection", "conditional_backdoor"],
-        severity_base="CRITICAL",
+        structural_significance="EXCEPTIONAL",
         version="2.0.0",
         changelog=[
             "1.0.0 (2026-01-19): Initial implementation",
-            "2.0.0 (2026-01-19): Updated with HiddenLayer ShadowLogic research, elevated to CRITICAL"
+            "2.0.0 (2026-01-19): Updated with HiddenLayer ShadowLogic research, raised to EXCEPTIONAL significance"
         ],
         chainable_with=["SHADOWLOGIC_FORMAT_SURFACE", "SHADOWLOGIC_INJECTION_POINT"],
-        notes="CRITICAL finding. Indicates potential existing backdoor. "
+        notes="Notable structural signal. Indicates potential existing backdoor. "
               "Standard neural networks do NOT use conditional operations. "
               "Any presence should trigger immediate investigation."
     ),
     
     # =========================================================================
-    # SHADOWLOGIC SUPPLY CHAIN VULNERABILITIES
+    # SHADOWLOGIC SUPPLY CHAIN MOTIFS
     # =========================================================================
     
     "SHADOWLOGIC_FORMAT_SURFACE": GadgetDefinition(
@@ -500,7 +512,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["shadowlogic_injection", "graph_manipulation", "supply_chain_attack"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation from HiddenLayer research"],
         chainable_with=["SHADOWLOGIC_INJECTION_POINT", "SHADOWLOGIC_CAMOUFLAGE"],
@@ -526,7 +538,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["shadowlogic_injection", "trigger_insertion", "output_override"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["SHADOWLOGIC_FORMAT_SURFACE", "SHADOWLOGIC_CAMOUFLAGE"],
@@ -551,7 +563,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["shadowlogic_concealment", "audit_evasion"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["SHADOWLOGIC_FORMAT_SURFACE", "SHADOWLOGIC_INJECTION_POINT"],
@@ -577,7 +589,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["model_tampering", "supply_chain_attack", "integrity_bypass"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["SHADOWLOGIC_FORMAT_SURFACE"],
@@ -600,7 +612,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["eot_attacks", "adversarial_resize", "patch_placement"],
-        severity_base="LOW",
+        structural_significance="TERTIARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=[],
@@ -630,11 +642,11 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["adversarial_patch", "lavan", "universal_perturbation", 
                         "localized_attacks"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["GAP_FC_HEAD", "ALIASING_DOWNSAMPLE"],
-        notes="Increases GAP_FC_HEAD severity to CRITICAL when present."
+        notes="Raises GAP_FC_HEAD structural significance to EXCEPTIONAL when present."
     ),
     
     "HAS_SPATIAL_ATTENTION": GadgetDefinition(
@@ -654,11 +666,11 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=[],  # Defensive - doesn't enable attacks
-        severity_base="DEFENSIVE",
+        structural_significance="MITIGATING",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=[],
-        notes="Reduces GAP_FC_HEAD severity to MEDIUM when present."
+        notes="Lowers GAP_FC_HEAD structural significance to SECONDARY when present."
     ),
     
     # =========================================================================
@@ -695,7 +707,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         attacks_enabled=["adversarial_yolo", "object_hider", "disappearance_attacks", 
                         "objectness_suppression", "adversarial_clothing", "adversarial_texture",
                         "license_plate_attack", "patch_switching"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.1.0",
         changelog=[
             "1.0.0 (2026-01-19): Initial implementation",
@@ -724,7 +736,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["dpatch", "adversarial_yolo", "anchor_manipulation", 
                         "targeted_disappearance"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["OBJECTNESS_HEAD", "FPN_STRUCTURE"],
@@ -748,7 +760,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["multi_scale_evasion", "dpatch", "scale_sensitive_attacks", 
                         "shapeshifter"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["HIGH_FANIN_FUSION", "DETECTION_HEAD_PATTERN"],
@@ -771,7 +783,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["shapeshifter", "rpn_attacks", "proposal_suppression", 
                         "two_stage_evasion"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["SHARED_BACKBONE", "DETECTION_HEAD_PATTERN"],
@@ -797,7 +809,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["confidence_manipulation", "false_positive_injection", "nms_bypass",
                         "nested_ae", "translucent_patch"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.1.0",
         changelog=[
             "1.0.0 (2026-01-19): Initial implementation",
@@ -823,7 +835,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["adversarial_yolo", "shapeshifter", "detector_evasion"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["OBJECTNESS_HEAD", "ANCHOR_BASED_DETECTION"],
@@ -850,7 +862,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         attacks_enabled=["single_point_failure", "backbone_attacks", 
                         "universal_detector_perturbation", "entity_recognition_attack",
                         "screen_attack"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.1.0",
         changelog=[
             "1.0.0 (2026-01-19): Initial implementation",
@@ -874,19 +886,19 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         detection_logic="Detect Conv in early layers where kernel_shape == strides and "
                        "kernel >= 14 (common ViT patch sizes: 14, 16, 32).",
         research_basis=[
-            "103-ViTSSL-2024",  # ViT SSL vulnerabilities
-            "114-FakeIt-2024",  # ViT detector vulnerabilities
+            "103-ViTSSL-2024",  # ViT SSL attack landscape
+            "114-FakeIt-2024",  # ViT detector attack landscape
         ],
         first_documented="2024",
         last_validated="2024",
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["vit_patch_attacks", "attention_hijacking", "universal_perturbation"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["UNREGULARIZED_ATTENTION", "CLS_TOKEN_AGGREGATION"],
-        notes="ViT equivalent of CNN input vulnerability but concentrated in single projection."
+        notes="ViT equivalent of CNN input attack landscape but concentrated in single projection."
     ),
     
     "UNREGULARIZED_ATTENTION": GadgetDefinition(
@@ -905,7 +917,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["attention_hijacking", "adversarial_patch", "backdoor_attention"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["VIT_PATCH_EMBEDDING", "CLS_TOKEN_AGGREGATION"],
@@ -928,7 +940,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["vit_patch_attacks", "cls_manipulation", "universal_perturbation"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["VIT_PATCH_EMBEDDING", "UNREGULARIZED_ATTENTION"],
@@ -944,18 +956,18 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         detection_logic="Count stride-2 Conv/Pool operations in first 15% of network. "
                        "Flag if >= 3.",
         research_basis=[
-            "107-FDMYOLO-2025",  # Small object vulnerability
+            "107-FDMYOLO-2025",  # Small object attack landscape
         ],
         first_documented="2025",
         last_validated="2025",
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["small_object_evasion", "physical_patch", "aliasing_attacks"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-19): Initial implementation"],
         chainable_with=["ALIASING_DOWNSAMPLE", "OBJECTNESS_HEAD"],
-        notes="Small objects especially vulnerable. Reduces minimum effective patch size."
+        notes="Small objects especially sensitive to patch attacks. Reduces minimum effective patch size."
     ),
     
     # =========================================================================
@@ -983,11 +995,11 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["ctc_prefix_attack", "forced_transcription", "blank_token_exploit"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation from audio batch analysis"],
         chainable_with=["AUDIO_MEL_INPUT", "AUDIO_STRIDE_DOWNSAMPLE", "AUDIO_TEMPORAL_ATTENTION"],
-        notes="CTC loss structure makes models vulnerable to prefix-injection attacks. "
+        notes="CTC loss structure indexes prefix-injection attack landscape. "
               "Blank token at index 0 is a known exploitation target."
     ),
     
@@ -1011,7 +1023,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["token_injection", "premature_eos", "control_token_hijack"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation from audio batch analysis"],
         chainable_with=["CTC_DECODER_STRUCTURE", "CROSS_MODAL_ATTENTION", "ENCODER_DECODER_SEQ2SEQ"],
@@ -1039,7 +1051,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["task_confusion", "cross_task_attack", "conditioning_hijack"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation from audio batch analysis"],
         chainable_with=["SPECIAL_TOKEN_CONTROL_FLOW", "CROSS_MODAL_ATTENTION"],
@@ -1067,7 +1079,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["language_confusion", "code_switch_attack", "lang_id_bypass"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation from audio batch analysis"],
         chainable_with=["TASK_TOKEN_CONDITIONING", "AUDIO_MEL_INPUT"],
@@ -1085,7 +1097,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         name="Multimodal Fusion Point",
         category=GadgetCategory.FEATURE_FUSION,
         description="Operation where two or more modality branches merge (Concat, Add, "
-                   "cross-attention). The fusion boundary is a critical attack surface — "
+                   "cross-attention). The fusion boundary is a primary attack surface: "
                    "adversarial content in one modality can corrupt the fused representation.",
         detection_logic="Detect Concat/Add/MatMul nodes that receive inputs from multiple "
                        "distinct branches (determined by graph topology analysis). "
@@ -1100,7 +1112,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["cross_modal_injection", "modality_hijack", "fusion_point_attack", "multimodal_jailbreak"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation from multimodal batch analysis"],
         chainable_with=["CROSS_MODAL_FUSION_LATE", "DUAL_ENCODER_ALIGNMENT", "SHARED_BACKBONE"],
@@ -1127,7 +1139,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["late_fusion_exploit", "modality_disconnect", "adversarial_modality_substitution"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation from multimodal batch analysis"],
         chainable_with=["MULTIMODAL_FUSION_POINT", "DUAL_ENCODER_ALIGNMENT"],
@@ -1157,12 +1169,11 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["embedding_space_attack", "contrastive_adversarial", "clip_attack", "typographic_attack"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation from multimodal batch analysis"],
         chainable_with=["MULTIMODAL_FUSION_POINT", "ENCODER_PROJECTION_BRIDGE"],
-        notes="CLIP-style dual encoders are particularly vulnerable to typographic attacks "
-              "and embedding space manipulation."
+        notes="CLIP-style dual encoders index typographic attack and embedding space manipulation."
     ),
     
     "TEMPORAL_CROSS_MODAL_SYNC": GadgetDefinition(
@@ -1185,7 +1196,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["temporal_desync_attack", "alignment_corruption", "sync_exploitation"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation from multimodal batch analysis"],
         chainable_with=["MULTIMODAL_FUSION_POINT", "CROSS_MODAL_ATTENTION", "AUDIO_TEMPORAL_ATTENTION"],
@@ -1218,7 +1229,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["projection_manipulation", "bridge_attack", "dimension_mismatch_exploit"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation from multimodal batch analysis"],
         chainable_with=["DUAL_ENCODER_ALIGNMENT", "MULTIMODAL_FUSION_POINT"],
@@ -1244,7 +1255,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["quantization_error_amplification", "bit_flip_attack", "precision_exploit"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation"],
         chainable_with=["AMPLIFIER", "NORMALIZER"],
@@ -1271,7 +1282,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="LOW",
         status=GadgetStatus.EXPERIMENTAL,
         attacks_enabled=["voxel_perturbation", "point_cloud_attack", "spatial_binning_exploit", "lidar_spoofing"],
-        severity_base="HIGH",
+        structural_significance="PRIMARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation — experimental"],
         chainable_with=["SHARED_BACKBONE"],
@@ -1309,7 +1320,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
             "cross_sensor_transfer",
             "visible_trained_nonvisible_deploy",
         ],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-05-22): Deployment-context motif for thermal papers"],
         chainable_with=["GAP_FC_HEAD", "ALIASING_DOWNSAMPLE", "IN_GRAPH_PREPROCESSING"],
@@ -1339,7 +1350,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
             "distribution_shift",
             "isp_pipeline_mismatch",
         ],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-05-22): In-graph vs off-graph preprocessing signal"],
         chainable_with=["NORMALIZER", "SHAPE_OP", "SINGLE_MODALITY_INPUT"],
@@ -1363,7 +1374,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="HIGH",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["cross_modal_injection", "modality_hijack", "late_fusion_exploit"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-05-22): Companion to SINGLE_MODALITY_INPUT"],
         chainable_with=["MULTIMODAL_FUSION_POINT", "DUAL_ENCODER_ALIGNMENT"],
@@ -1387,7 +1398,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["audio_adversarial", "psychoacoustic_masking", "frequency_attacks"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-05-22): Registered audio motif from motifs detector"],
         chainable_with=["AUDIO_STRIDE_DOWNSAMPLE", "AUDIO_1D_CONV", "CTC_DECODER_STRUCTURE"],
@@ -1405,7 +1416,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["audio_adversarial", "temporal_perturbation"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-05-22): Registered from motifs audio scan"],
         chainable_with=["AUDIO_MEL_INPUT", "AUDIO_STRIDE_DOWNSAMPLE"],
@@ -1424,7 +1435,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["audio_aliasing", "robust_audio_attacks", "audio_adversarial"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-05-22): Registered from motifs audio scan"],
         chainable_with=["AUDIO_MEL_INPUT", "AUDIO_1D_CONV"],
@@ -1442,7 +1453,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["audio_adversarial", "attention_hijacking", "temporal_perturbation"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-05-22): Registered from motifs audio scan"],
         chainable_with=["AUDIO_MEL_INPUT", "CROSS_MODAL_ATTENTION"],
@@ -1463,7 +1474,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["cross_modal_injection", "audio_text_hijacking", "hidden_command_injection"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-05-22): Registered from motifs audio/ASR scan"],
         chainable_with=["ENCODER_DECODER_SEQ2SEQ", "SPECIAL_TOKEN_CONTROL_FLOW"],
@@ -1484,7 +1495,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         confidence="MEDIUM",
         status=GadgetStatus.ACTIVE,
         attacks_enabled=["seq2seq_backdoor", "cross_modal_injection", "forced_transcription"],
-        severity_base="MEDIUM",
+        structural_significance="SECONDARY",
         version="1.0.0",
         changelog=["1.0.0 (2026-05-22): Registered from motifs ASR scan"],
         chainable_with=["CTC_DECODER_STRUCTURE", "SPECIAL_TOKEN_CONTROL_FLOW", "AUDIO_MEL_INPUT"],
@@ -1501,9 +1512,9 @@ CHAIN_REGISTRY: Dict[str, Dict[str, Any]] = {
     "CHAIN-PATCH-ATTACK-SURFACE": {
         "name": "Patch Attack Surface",
         "required_gadgets": ["GAP_FC_HEAD"],
-        "severity_modifiers": {
-            "NO_SPATIAL_ATTENTION": "+CRITICAL",  # Upgrades to CRITICAL
-            "HAS_SPATIAL_ATTENTION": "-MEDIUM",   # Downgrades to MEDIUM
+        "composition_modifiers": {
+            "NO_SPATIAL_ATTENTION": "+EXCEPTIONAL",  # Raises chain significance
+            "HAS_SPATIAL_ATTENTION": "-SECONDARY",   # Lowers chain significance
         },
         "research_basis": ["36-GoogleAp-2017", "39-LaVAN-2018"],
         "version": "1.1.0",
@@ -1521,7 +1532,7 @@ CHAIN_REGISTRY: Dict[str, Dict[str, Any]] = {
         "name": "Compound Physical Attack Surface",
         "required_gadgets": ["GAP_FC_HEAD", "ALIASING_DOWNSAMPLE"],
         "logic": "AND",  # All must be present
-        "severity": "CRITICAL",
+        "structural_significance": "EXCEPTIONAL",
         "research_basis": ["36-GoogleAp-2017", "38-EOT-2018"],
         "version": "1.0.0",
     },
@@ -1530,7 +1541,7 @@ CHAIN_REGISTRY: Dict[str, Dict[str, Any]] = {
         "name": "Adversarial Training Resistance Pattern",
         "required_gadgets": ["HIGH_FANIN_FUSION", "SKIP_CONNECTION"],
         "min_counts": {"HIGH_FANIN_FUSION": 3, "SKIP_CONNECTION": 3},
-        "severity": "HIGH",
+        "structural_significance": "PRIMARY",
         "research_basis": ["111-DUMBer-2025"],
         "version": "1.0.0",
     },
@@ -1540,7 +1551,7 @@ CHAIN_REGISTRY: Dict[str, Dict[str, Any]] = {
         "required_gadgets": ["VIT_PATCH_EMBEDDING"],
         "optional_gadgets": ["UNREGULARIZED_ATTENTION", "CLS_TOKEN_AGGREGATION"],
         "min_optional": 1,
-        "severity": "CRITICAL",
+        "structural_significance": "EXCEPTIONAL",
         "research_basis": ["103-ViTSSL-2024", "114-FakeIt-2024"],
         "version": "1.0.0",
     },
@@ -1548,7 +1559,7 @@ CHAIN_REGISTRY: Dict[str, Dict[str, Any]] = {
     "CHAIN-OBJECT-DISAPPEARANCE": {
         "name": "Object Disappearance Attack Surface",
         "required_gadgets": ["OBJECTNESS_HEAD"],
-        "severity": "CRITICAL",
+        "structural_significance": "EXCEPTIONAL",
         "research_basis": ["84-AdvYOLO-2019", "73-ObjectHider-2020"],
         "version": "1.0.0",
     },
@@ -1558,7 +1569,7 @@ CHAIN_REGISTRY: Dict[str, Dict[str, Any]] = {
         "required_gadgets": ["AGGRESSIVE_EARLY_DOWNSAMPLING"],
         "optional_gadgets": ["ALIASING_DOWNSAMPLE", "OBJECTNESS_HEAD"],
         "min_optional": 1,
-        "severity": "HIGH",
+        "structural_significance": "PRIMARY",
         "research_basis": ["107-FDMYOLO-2025"],
         "version": "1.0.0",
     },
@@ -1570,7 +1581,7 @@ CHAIN_REGISTRY: Dict[str, Dict[str, Any]] = {
     "CHAIN-SHADOWLOGIC-EXISTING-BACKDOOR": {
         "name": "ShadowLogic Backdoor Detected",
         "required_gadgets": ["CONTROL_POINT"],
-        "severity": "CRITICAL",
+        "structural_significance": "EXCEPTIONAL",
         "research_basis": ["HiddenLayer-ShadowLogic-2024", "arXiv-2511.00664"],
         "version": "1.0.0",
         "notes": "Indicates potential existing backdoor. Conditional operations are "
@@ -1582,15 +1593,15 @@ CHAIN_REGISTRY: Dict[str, Dict[str, Any]] = {
         "required_gadgets": ["SHADOWLOGIC_FORMAT_SURFACE", "SHADOWLOGIC_INJECTION_POINT"],
         "optional_gadgets": ["SHADOWLOGIC_CAMOUFLAGE", "SHADOWLOGIC_NO_INTEGRITY"],
         "min_optional": 1,
-        "severity": "HIGH",
-        "severity_modifiers": {
-            "SHADOWLOGIC_CAMOUFLAGE": "+HIGH",  # Increases severity
-            "SHADOWLOGIC_NO_INTEGRITY": "+CRITICAL",  # Upgrades to CRITICAL
+        "structural_significance": "PRIMARY",
+        "composition_modifiers": {
+            "SHADOWLOGIC_CAMOUFLAGE": "+PRIMARY",  # Raises chain significance
+            "SHADOWLOGIC_NO_INTEGRITY": "+EXCEPTIONAL",  # Raises to EXCEPTIONAL
         },
         "research_basis": ["HiddenLayer-ShadowLogic-2024", "HiddenLayer-PersistentBackdoors-2024"],
         "version": "1.0.0",
-        "notes": "Model is vulnerable to ShadowLogic injection attacks. Attacker with "
-                 "file access could embed persistent backdoors.",
+        "notes": "Graph structure enables ShadowLogic injection when combined motifs are present. "
+                 "Attacker with file access could embed persistent backdoors.",
     },
 
     "CHAIN-SINGLE-MODALITY-VISION": {

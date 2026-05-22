@@ -30,7 +30,10 @@ _FINDING_RATING_FIELDS = frozenset({
 
 # Internal chain registry metadata not shown in export.
 _CHAIN_INTERNAL_FIELDS = frozenset({
-    "severity_modifiers",
+    "severity",
+    "severity_modifiers",  # deprecated registry keys
+    "composition_modifiers",
+    "structural_significance",
 })
 
 # Narrative sections that frame security posture rather than structure.
