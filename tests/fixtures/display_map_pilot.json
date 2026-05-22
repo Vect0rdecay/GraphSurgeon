@@ -1,0 +1,77 @@
+{
+  "NORMALIZER": {
+    "title": "NORMALIZER \u2014 BatchNorm Layer",
+    "research_basis": [
+      "BNAttack-2020",
+      "66-AdvShadow-2022"
+    ],
+    "attacks_enabled": [
+      "distribution_shift_attacks",
+      "domain_attacks",
+      "light_attacks",
+      "shadow_attacks",
+      "illumination_attacks"
+    ]
+  },
+  "GAP_FC_HEAD": {
+    "title": "GAP_FC_HEAD \u2014 Global Average Pool \u2192 FC Head",
+    "research_basis": [
+      "36-GoogleAp-2017",
+      "39-LaVAN-2018",
+      "71-DPATCH-2019",
+      "114-FakeIt-2024",
+      "42-ACS-2019",
+      "44-AdvACO-2020",
+      "45-AdvWatermark-2020",
+      "54-TnT-2022"
+    ],
+    "attacks_enabled": [
+      "adversarial_patch",
+      "lavan",
+      "universal_perturbation",
+      "feature_space_attacks",
+      "dpatch",
+      "aco_patch",
+      "watermark_patch",
+      "trojan_texture",
+      "copy_paste"
+    ]
+  },
+  "MAXPOOL_AFTER_FUSION": {
+    "title": "MAXPOOL_AFTER_FUSION \u2014 MaxPool After Feature Fusion",
+    "research_basis": [
+      "36-GoogleAp-2017",
+      "39-LaVAN-2018",
+      "71-DPATCH-2019",
+      "112-StochasticRes-2025",
+      "67-PhysGAN-2020"
+    ],
+    "attacks_enabled": [
+      "amplified_patch",
+      "multi_scale_patch",
+      "sparse_attacks",
+      "gan_attacks"
+    ]
+  },
+  "CHAIN-PATCH-ATTACK-SURFACE": {
+    "title": "CHAIN-PATCH-ATTACK-SURFACE \u2014 Patch Attack Surface",
+    "research_basis": [
+      "36-GoogleAp-2017",
+      "39-LaVAN-2018"
+    ]
+  },
+  "CHAIN-PHYSICAL-WORLD-ATTACK": {
+    "title": "CHAIN-PHYSICAL-WORLD-ATTACK \u2014 Physical-World Attack Surface",
+    "research_basis": [
+      "38-EOT-2018",
+      "60-RP2-2018"
+    ]
+  },
+  "CHAIN-COMPOUND-PHYSICAL-PATCH": {
+    "title": "CHAIN-COMPOUND-PHYSICAL-PATCH \u2014 Compound Physical Attack Surface",
+    "research_basis": [
+      "36-GoogleAp-2017",
+      "38-EOT-2018"
+    ]
+  }
+}

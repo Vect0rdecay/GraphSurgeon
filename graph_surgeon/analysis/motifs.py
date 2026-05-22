@@ -23,7 +23,7 @@ class ThreatCategory(Enum):
 
 
 class Severity(Enum):
-    """Vulnerability severity levels."""
+    """Finding severity levels."""
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -32,16 +32,17 @@ class Severity(Enum):
 
 
 class FindingType(Enum):
-    """Distinguishes between vulnerabilities and attack surface components."""
-    VULNERABILITY = "vulnerability"      # Actual exploitable weakness requiring remediation
-    ATTACK_CHAIN = "attack_chain"        # Multiple gadgets combining into a real vuln
-    GADGET = "gadget"                    # Attack surface component, not vuln alone
-    CHARACTERISTIC = "characteristic"    # Inherent model property, informational only
+    """Distinguishes structural motifs, chains, and informational characteristics."""
+    STRUCTURAL_MOTIF = "structural_motif"
+    ATTACK_CHAIN = "attack_chain"
+    GADGET = "gadget"
+    CHARACTERISTIC = "characteristic"
+    VULNERABILITY = "structural_motif"  # deprecated alias
 
 
 @dataclass
-class Vulnerability:
-    """Represents a discovered vulnerability or attack surface finding."""
+class StructuralFinding:
+    """Represents a discovered structural motif or attack-surface finding."""
     id: str
     category: ThreatCategory
     severity: Severity
@@ -54,8 +55,14 @@ class Vulnerability:
     mitigation: str
     references: List[str] = field(default_factory=list)
     cvss_estimate: float = 0.0
-    finding_type: FindingType = FindingType.VULNERABILITY  # New field
-    chainable_with: List[str] = field(default_factory=list)  # IDs of gadgets this chains with
+    finding_type: FindingType = FindingType.STRUCTURAL_MOTIF
+    chainable_with: List[str] = field(default_factory=list)
+    registry_id: Optional[str] = None
+    chain_id: Optional[str] = None
+
+
+# Backward-compatible alias
+Vulnerability = StructuralFinding
 
 
 @dataclass 
@@ -67,19 +74,27 @@ class NodeSecurityProfile:
     input_shapes: List[Tuple]
     output_shapes: List[Tuple]
     
-    # Vulnerability indicators
-    gradient_sensitivity: float = 0.0  # How much gradients amplify through this node
-    lipschitz_estimate: float = 1.0    # Local Lipschitz constant estimate
-    perturbation_amplification: float = 1.0  # Input perturbation -> output change ratio
+    # Structural motif indicators
+    gradient_sensitivity: float = 0.0
+    lipschitz_estimate: float = 1.0
+    perturbation_amplification: float = 1.0
     
     # Attack surface indicators
-    shadowlogic_capacity: float = 0.0   # Unused capacity for hidden logic
-    impnet_payload_capacity: int = 0    # Bytes of potential steganographic payload
-    extraction_leakage: float = 0.0     # Information leakage potential
+    shadowlogic_capacity: float = 0.0
+    impnet_payload_capacity: int = 0
+    extraction_leakage: float = 0.0
     
-    # Plain English analysis
     security_summary: str = ""
-    vulnerabilities: List[Vulnerability] = field(default_factory=list)
+    structural_findings: List[StructuralFinding] = field(default_factory=list)
+
+    @property
+    def vulnerabilities(self) -> List[StructuralFinding]:
+        """Deprecated alias for structural_findings."""
+        return self.structural_findings
+
+    @vulnerabilities.setter
+    def vulnerabilities(self, value: List[StructuralFinding]) -> None:
+        self.structural_findings = value
     
 
 @dataclass
@@ -161,8 +176,17 @@ class ModelSecurityReport:
     shadowlogic_assessment: Optional[ShadowLogicSusceptibility] = None
     
     # Detailed findings
-    vulnerabilities: List[Vulnerability] = field(default_factory=list)
+    structural_findings: List[StructuralFinding] = field(default_factory=list)
     node_profiles: Dict[str, NodeSecurityProfile] = field(default_factory=dict)
+
+    @property
+    def vulnerabilities(self) -> List[StructuralFinding]:
+        """Deprecated alias for structural_findings."""
+        return self.structural_findings
+
+    @vulnerabilities.setter
+    def vulnerabilities(self, value: List[StructuralFinding]) -> None:
+        self.structural_findings = value
     
     # Gadget analysis (attack chain building blocks)
     gadgets: List[Any] = field(default_factory=list)  # List[Gadget]
@@ -3322,7 +3346,7 @@ class GadgetDetector:
         return result
     
     def find_attack_chains(self, gadgets: List[Gadget], 
-                          edges: List[Tuple[str, str]]) -> List[Vulnerability]:
+                          edges: List[Tuple[str, str]]) -> List[StructuralFinding]:
         """
         Identify meaningful attack chains from gadget combinations.
         
@@ -3393,7 +3417,7 @@ class GadgetDetector:
         return chains
     
     def _find_input_preprocessing_issues(self, gadgets: List[Gadget], 
-                                         gadget_map: dict) -> List[Vulnerability]:
+                                         gadget_map: dict) -> List[StructuralFinding]:
         """A. Detect input boundary and preprocessing vulnerabilities."""
         chains = []
         
@@ -3406,7 +3430,7 @@ class GadgetDetector:
         
         if early_carriers and not early_normalizers:
             first_carrier = early_carriers[0]
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id=f"CHAIN-INPUT-NONORM-{first_carrier.node_id}",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.MEDIUM,
@@ -3429,7 +3453,7 @@ class GadgetDetector:
         # Check for shape manipulation ops (dynamic input vulnerability)
         shape_ops = [g for g in early_gadgets if g.gadget_type == GadgetType.SHAPE_OP]
         if len(shape_ops) >= 2:
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id=f"CHAIN-INPUT-DYNAMIC",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.LOW,
@@ -3450,7 +3474,7 @@ class GadgetDetector:
         return chains
     
     def _find_early_downsampling_chains(self, gadgets: List[Gadget],
-                                        gadget_map: dict) -> List[Vulnerability]:
+                                        gadget_map: dict) -> List[StructuralFinding]:
         """B. Detect early downsampling and aliasing vulnerabilities."""
         chains = []
         
@@ -3463,7 +3487,7 @@ class GadgetDetector:
                            if g.op_type == "Conv" and any(s >= 2 for s in g.strides)]
             
             if stride2_convs:
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id=f"CHAIN-EARLY-STRIDE2",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.MEDIUM,
@@ -3493,7 +3517,7 @@ class GadgetDetector:
         if early_pools:
             large_pool = [g for g in early_pools if g.kernel_size and any(k >= 3 for k in g.kernel_size)]
             if large_pool:
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id=f"CHAIN-EARLY-AGGPOOL",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.MEDIUM,
@@ -3514,7 +3538,7 @@ class GadgetDetector:
         return chains
     
     def _find_maxpool_amplification_chains(self, gadgets: List[Gadget], adjacency: dict,
-                                           gadget_map: dict) -> List[Vulnerability]:
+                                           gadget_map: dict) -> List[StructuralFinding]:
         """C. Detect MaxPool spike amplification patterns."""
         chains = []
         
@@ -3537,7 +3561,7 @@ class GadgetDetector:
                     visited.update(new_visited)
                 
                 if maxpool.node_id in visited:
-                    chains.append(Vulnerability(
+                    chains.append(StructuralFinding(
                         id=f"CHAIN-FUSION-MAXPOOL-{fusion.node_id}",
                         category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                         severity=Severity.HIGH,
@@ -3562,14 +3586,14 @@ class GadgetDetector:
         return chains
     
     def _find_skip_connection_highways(self, gadgets: List[Gadget],
-                                       gadget_map: dict) -> List[Vulnerability]:
+                                       gadget_map: dict) -> List[StructuralFinding]:
         """E. Detect skip connection gradient highways."""
         chains = []
         
         skip_gadgets = [g for g in gadgets if g.gadget_type == GadgetType.SKIP_CONNECTION]
         
         if len(skip_gadgets) >= 3:
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id=f"CHAIN-SKIP-HIGHWAY",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.MEDIUM,
@@ -3592,7 +3616,7 @@ class GadgetDetector:
         return chains
     
     def _find_normalization_issues(self, gadgets: List[Gadget], gadget_map: dict,
-                                   adjacency: dict) -> List[Vulnerability]:
+                                   adjacency: dict) -> List[StructuralFinding]:
         """E. Detect normalization fragility patterns."""
         chains = []
         
@@ -3601,7 +3625,7 @@ class GadgetDetector:
         
         if bn_gadgets:
             # BatchNorm present - flag distribution shift vulnerability
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id=f"CHAIN-BN-FRAGILITY",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.LOW,
@@ -3624,7 +3648,7 @@ class GadgetDetector:
         return chains
     
     def _find_large_kernel_chains(self, gadgets: List[Gadget], adjacency: dict,
-                                  gadget_map: dict) -> List[Vulnerability]:
+                                  gadget_map: dict) -> List[StructuralFinding]:
         """F. Detect large kernel after fusion patterns."""
         chains = []
         
@@ -3639,7 +3663,7 @@ class GadgetDetector:
                 if lk.node_id in downstream or any(
                     lk.node_id in adjacency.get(d, []) for d in downstream
                 ):
-                    chains.append(Vulnerability(
+                    chains.append(StructuralFinding(
                         id=f"CHAIN-FUSION-LARGEKERNEL-{lk.node_id}",
                         category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                         severity=Severity.MEDIUM,
@@ -3662,7 +3686,7 @@ class GadgetDetector:
         return chains
     
     def _find_reduction_survivability_chains(self, gadgets: List[Gadget], adjacency: dict,
-                                             gadget_map: dict) -> List[Vulnerability]:
+                                             gadget_map: dict) -> List[StructuralFinding]:
         """G. Detect reduction block survivability patterns."""
         chains = []
         
@@ -3673,7 +3697,7 @@ class GadgetDetector:
             # Check for clustered reductions
             reducer_positions = sorted(set(g.position for g in reducers))
             
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id=f"CHAIN-REDUCTION-SURVIVE",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.MEDIUM,
@@ -3694,7 +3718,7 @@ class GadgetDetector:
         return chains
     
     def _find_head_sensitivity_chains(self, gadgets: List[Gadget], adjacency: dict,
-                                      gadget_map: dict) -> List[Vulnerability]:
+                                      gadget_map: dict) -> List[StructuralFinding]:
         """H. Detect classifier head sensitivity patterns."""
         chains = []
         
@@ -3707,7 +3731,7 @@ class GadgetDetector:
                        if g.gadget_type == GadgetType.LINEAR_HEAD and g.op_type in ["Gemm", "MatMul"]]
         
         if gap_gadgets and linear_heads:
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id=f"CHAIN-GAP-FC-HEAD",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.MEDIUM,
@@ -3746,7 +3770,7 @@ class GadgetDetector:
                     break
             
             if amplifier_after and amplifier_after.op_type == "MaxPool":
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id=f"CHAIN-CFA-{fusion.node_id}",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.HIGH,
@@ -3791,7 +3815,7 @@ class GadgetDetector:
                             gadget_map[inp].gadget_type == GadgetType.PERTURBATION_CARRIER]
             
             if len(carrier_inputs) >= 3:  # 3+ branches is significant
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id=f"CHAIN-MCF-{fusion.node_id}",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.MEDIUM,
@@ -3833,7 +3857,7 @@ class GadgetDetector:
                             new_frontier.append(neighbor)
                             
                             if neighbor in control_gadgets:
-                                chains.append(Vulnerability(
+                                chains.append(StructuralFinding(
                                     id=f"CHAIN-SL-{cap.node_id}",
                                     category=ThreatCategory.SHADOWLOGIC_INJECTION,
                                     severity=Severity.HIGH,
@@ -3901,7 +3925,7 @@ class GadgetDetector:
                     break
             
             if chain_length >= 4:  # 4+ consecutive carriers is notable
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id=f"CHAIN-GH-{chain_start}",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.MEDIUM if chain_length < 6 else Severity.HIGH,
@@ -3933,7 +3957,7 @@ class GadgetDetector:
         maxpool_early = [g for g in early_amplifiers if g.op_type == "MaxPool"]
         
         if len(maxpool_early) >= 1:
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id=f"CHAIN-EA-maxpool",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.MEDIUM,
@@ -3956,7 +3980,7 @@ class GadgetDetector:
         return chains
     
     def _find_research_based_chains(self, gadgets: List[Gadget], 
-                                   gadget_map: dict) -> List[Vulnerability]:
+                                   gadget_map: dict) -> List[StructuralFinding]:
         """
         Detect attack chains based on Phase 1 research findings.
         
@@ -3998,7 +4022,7 @@ class GadgetDetector:
                 cvss = 7.5
                 attention_note = ""
             
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id="CHAIN-PATCH-ATTACK-SURFACE",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=severity,
@@ -4027,7 +4051,7 @@ class GadgetDetector:
         
         # === CHAIN 2: Physical World Attack Vulnerability (EOT, RP2) ===
         if aliasing_gadgets:
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id="CHAIN-PHYSICAL-WORLD-ATTACK",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.HIGH,
@@ -4057,7 +4081,7 @@ class GadgetDetector:
             g.gadget_type == GadgetType.AMPLIFIER for g in gadgets)):
             
             relevant_gadgets = maxpool_fusion_gadgets or high_fanin_gadgets
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id="CHAIN-AMPLIFIED-MULTISCALE-ATTACK",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.HIGH,
@@ -4083,7 +4107,7 @@ class GadgetDetector:
         # === CHAIN 4: Combined High-Risk Pattern ===
         # If model has BOTH GAP-FC AND aliasing - compound vulnerability
         if gap_fc_gadgets and aliasing_gadgets:
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id="CHAIN-COMPOUND-PHYSICAL-PATCH",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.CRITICAL,
@@ -4125,7 +4149,7 @@ class GadgetDetector:
         if is_detector:
             # === CHAIN 5: Object Disappearance Attack (Adversarial YOLO) ===
             if objectness_gadgets:
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id="CHAIN-OBJECT-DISAPPEARANCE",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.CRITICAL,
@@ -4153,7 +4177,7 @@ class GadgetDetector:
             
             # === CHAIN 6: Two-Stage RPN Attack (ShapeShifter) ===
             if rpn_gadgets:
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id="CHAIN-RPN-PROPOSAL-ATTACK",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.CRITICAL,
@@ -4179,7 +4203,7 @@ class GadgetDetector:
             
             # === CHAIN 7: Anchor-Based Detection Vulnerability ===
             if anchor_gadgets:
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id="CHAIN-ANCHOR-EXPLOITATION",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.HIGH,
@@ -4205,7 +4229,7 @@ class GadgetDetector:
             
             # === CHAIN 8: Multi-Scale FPN Attack Surface ===
             if fpn_gadgets and len(fpn_gadgets) >= 2:
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id="CHAIN-FPN-MULTISCALE-ATTACK",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.HIGH,
@@ -4230,7 +4254,7 @@ class GadgetDetector:
             
             # === CHAIN 9: NMS Manipulation Vulnerability ===
             if nms_gadgets:
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id="CHAIN-NMS-MANIPULATION",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.MEDIUM,
@@ -4255,7 +4279,7 @@ class GadgetDetector:
             # === CHAIN 10: Combined Detector Vulnerability (UPC/CAMOU style) ===
             # If detector has both objectness AND aliasing - physical-world person/vehicle hiding
             if objectness_gadgets and aliasing_gadgets:
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id="CHAIN-PHYSICAL-DETECTOR-EVASION",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.CRITICAL,
@@ -4303,7 +4327,7 @@ class GadgetDetector:
                 if has_cls_vuln:
                     vuln_components.append("CLS token aggregation")
                 
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id="CHAIN-VIT-PATCH-ATTACK",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.CRITICAL,
@@ -4336,7 +4360,7 @@ class GadgetDetector:
         skip_gadgets = [g for g in gadgets if g.gadget_type == GadgetType.SKIP_CONNECTION]
         
         if len(high_fanin_gadgets) >= 3 and len(skip_gadgets) >= 3:
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id="CHAIN-AT-RESISTANT-ARCHITECTURE",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.HIGH,
@@ -4367,7 +4391,7 @@ class GadgetDetector:
         if aggressive_downsample_gadgets:
             if aliasing_gadgets or objectness_gadgets:
                 target_type = "object detection" if objectness_gadgets else "classification"
-                chains.append(Vulnerability(
+                chains.append(StructuralFinding(
                     id="CHAIN-SMALL-OBJECT-SENSITIVITY",
                     category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                     severity=Severity.HIGH,
@@ -4411,7 +4435,7 @@ class GadgetDetector:
             if has_attention:
                 vuln_components.append(f"{len(audio_attention_gadgets)} temporal attention layers")
             
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id="CHAIN-AUDIO-ADVERSARIAL",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=severity,
@@ -4448,7 +4472,7 @@ class GadgetDetector:
             has_audio_attention = len(audio_attention_gadgets) > 0
             has_unreg_attention = len(unreg_attention_gadgets) > 0
             
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id="CHAIN-AUDIO-CROSS-MODAL",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.CRITICAL,
@@ -4482,7 +4506,7 @@ class GadgetDetector:
         seq2seq_gadgets = [g for g in gadgets if g.gadget_type == GadgetType.ENCODER_DECODER_SEQ2SEQ]
         
         if seq2seq_gadgets and cross_modal_gadgets:
-            chains.append(Vulnerability(
+            chains.append(StructuralFinding(
                 id="CHAIN-AUDIO-SHADOWLOGIC",
                 category=ThreatCategory.SHADOWLOGIC_INJECTION,
                 severity=Severity.CRITICAL,
@@ -4568,6 +4592,8 @@ class GadgetDetector:
             "critical_locations": [],  # Gadgets that enable multiple attack types
         }
         
+        from graph_surgeon.taxonomy.display import registry_id_for_gadget_summary_entry
+
         for gadget in gadgets:
             # Count by type
             type_name = gadget.gadget_type.value
@@ -4583,9 +4609,13 @@ class GadgetDetector:
             entry = {
                 "node": gadget.node_id,
                 "type": gadget.op_type,
+                "gadget_type": type_name,
                 "position": gadget.position,
                 "contribution": gadget.attack_contribution[:100] if gadget.attack_contribution else ""
             }
+            rid = registry_id_for_gadget_summary_entry(type_name)
+            if rid:
+                entry["registry_id"] = rid
             
             if gadget.gadget_type == GadgetType.AMPLIFIER:
                 summary["attack_enablers"]["sparse_patch_attacks"].append(entry)
@@ -4807,14 +4837,14 @@ class GadgetDetector:
         return summary
 
 
-class VulnerabilityRules:
-    """Rules for detecting specific vulnerabilities."""
+class StructuralMotifRules:
+    """Rules for detecting structural motifs on node profiles."""
     
     @staticmethod
-    def check_adversarial_amplification(node_profile: NodeSecurityProfile) -> Optional[Vulnerability]:
+    def check_adversarial_amplification(node_profile: NodeSecurityProfile) -> Optional[StructuralFinding]:
         """Detect nodes that amplify adversarial perturbations."""
         if node_profile.lipschitz_estimate > 10.0:
-            return Vulnerability(
+            return StructuralFinding(
                 id=f"ADV-AMP-{node_profile.node_id}",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.HIGH,
@@ -4840,7 +4870,7 @@ class VulnerabilityRules:
         return None
     
     @staticmethod
-    def check_shadowlogic_injection_point(node_profile: NodeSecurityProfile) -> Optional[Vulnerability]:
+    def check_shadowlogic_injection_point(node_profile: NodeSecurityProfile) -> Optional[StructuralFinding]:
         """
         Detect nodes that could hide ShadowLogic.
         
@@ -4902,7 +4932,7 @@ class VulnerabilityRules:
             # Combined check: attention masking OR decoder-level position/mask ops
             if is_attention_masking or is_decoder_masking:
                 # This is LIKELY legitimate attention masking - return INFO level only
-                return Vulnerability(
+                return StructuralFinding(
                     id=f"SHADOW-ATTN-MASK-{node_profile.node_id}",
                     category=ThreatCategory.SHADOWLOGIC_INJECTION,
                     severity=Severity.INFO,  # Downgraded from CRITICAL
@@ -4926,7 +4956,7 @@ class VulnerabilityRules:
                 )
             
             # Not attention masking - this IS suspicious
-            return Vulnerability(
+            return StructuralFinding(
                 id=f"SHADOW-COND-{node_profile.node_id}",
                 category=ThreatCategory.SHADOWLOGIC_INJECTION,
                 severity=Severity.CRITICAL,
@@ -4950,13 +4980,13 @@ class VulnerabilityRules:
                     "https://arxiv.org/abs/2212.02523",  # ShadowLogic paper
                 ],
                 cvss_estimate=9.0,
-                finding_type=FindingType.VULNERABILITY
+                finding_type=FindingType.STRUCTURAL_MOTIF
             )
         
         # Only flag extremely large unused capacity as a vulnerability
         # Normal layers having some unused capacity is expected, not a vuln
         if node_profile.shadowlogic_capacity > 50000:  # Much higher threshold
-            return Vulnerability(
+            return StructuralFinding(
                 id=f"SHADOW-CAP-{node_profile.node_id}",
                 category=ThreatCategory.SHADOWLOGIC_INJECTION,
                 severity=Severity.MEDIUM,
@@ -4982,7 +5012,7 @@ class VulnerabilityRules:
         return None
     
     @staticmethod
-    def check_impnet_payload_capacity(node_profile: NodeSecurityProfile) -> Optional[Vulnerability]:
+    def check_impnet_payload_capacity(node_profile: NodeSecurityProfile) -> Optional[StructuralFinding]:
         """
         Detect nodes that could hide ImpNet-style payloads.
         
@@ -4998,7 +5028,7 @@ class VulnerabilityRules:
         # Very large capacity (>1MB per layer) is suspicious - could indicate
         # architecture designed for payload hiding
         if node_profile.impnet_payload_capacity > 1_000_000:  # >1MB per layer
-            return Vulnerability(
+            return StructuralFinding(
                 id=f"IMPNET-LARGE-{node_profile.node_id}",
                 category=ThreatCategory.IMPNET_IMPLANTATION,
                 severity=Severity.HIGH,
@@ -5018,7 +5048,7 @@ class VulnerabilityRules:
                     "https://arxiv.org/abs/2107.08590",  # ImpNet
                 ],
                 cvss_estimate=7.0,
-                finding_type=FindingType.VULNERABILITY
+                finding_type=FindingType.STRUCTURAL_MOTIF
             )
         
         # Normal capacity - this is just a characteristic, not a per-node vulnerability
@@ -5026,10 +5056,10 @@ class VulnerabilityRules:
         return None
     
     @staticmethod
-    def check_model_extraction_surface(node_profile: NodeSecurityProfile) -> Optional[Vulnerability]:
+    def check_model_extraction_surface(node_profile: NodeSecurityProfile) -> Optional[StructuralFinding]:
         """Detect nodes that leak information for model extraction."""
         if node_profile.op_type == "Softmax":
-            return Vulnerability(
+            return StructuralFinding(
                 id=f"EXTRACT-{node_profile.node_id}",
                 category=ThreatCategory.MODEL_EXTRACTION,
                 severity=Severity.MEDIUM,
@@ -5055,10 +5085,10 @@ class VulnerabilityRules:
         return None
     
     @staticmethod
-    def check_privacy_attack_surface(node_profile: NodeSecurityProfile) -> Optional[Vulnerability]:
+    def check_privacy_attack_surface(node_profile: NodeSecurityProfile) -> Optional[StructuralFinding]:
         """Detect nodes vulnerable to privacy attacks."""
         if node_profile.op_type == "BatchNormalization":
-            return Vulnerability(
+            return StructuralFinding(
                 id=f"PRIV-BN-{node_profile.node_id}",
                 category=ThreatCategory.PRIVACY_ATTACK,
                 severity=Severity.LOW,
@@ -5084,10 +5114,10 @@ class VulnerabilityRules:
         return None
     
     @staticmethod
-    def check_attention_vulnerability(node_profile: NodeSecurityProfile) -> Optional[Vulnerability]:
+    def check_attention_vulnerability(node_profile: NodeSecurityProfile) -> Optional[StructuralFinding]:
         """Detect attention mechanism vulnerabilities."""
         if node_profile.op_type in ["Attention", "MultiHeadAttention", "ScaledDotProductAttention"]:
-            return Vulnerability(
+            return StructuralFinding(
                 id=f"ATT-{node_profile.node_id}",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.HIGH,
@@ -5112,6 +5142,9 @@ class VulnerabilityRules:
                 cvss_estimate=7.0
             )
         return None
+
+
+VulnerabilityRules = StructuralMotifRules
 
 
 # =============================================================================
@@ -5281,13 +5314,8 @@ class ModelFlowDescriber:
                     node.node_id, node.op_type, node.attributes,
                     node.input_shapes, node.output_shapes
                 )
-                security_flag = ""
-                if node.vulnerabilities:
-                    max_severity = max(v.severity.value for v in node.vulnerabilities)
-                    if max_severity in ["critical", "high"]:
-                        security_flag = " [!SECURITY CONCERN]"
-                
-                lines.append(f"- **{node.node_id}** ({node.op_type}): {desc}{security_flag}")
+
+                lines.append(f"- **{node.node_id}** ({node.op_type}): {desc}")
             
             lines.append("")
         
@@ -5958,12 +5986,12 @@ class StructuralMotifAnalyzer:
     
     def __init__(self):
         self.rules = [
-            VulnerabilityRules.check_adversarial_amplification,
-            VulnerabilityRules.check_shadowlogic_injection_point,
-            VulnerabilityRules.check_impnet_payload_capacity,
-            VulnerabilityRules.check_model_extraction_surface,
-            VulnerabilityRules.check_privacy_attack_surface,
-            VulnerabilityRules.check_attention_vulnerability,
+            StructuralMotifRules.check_adversarial_amplification,
+            StructuralMotifRules.check_shadowlogic_injection_point,
+            StructuralMotifRules.check_impnet_payload_capacity,
+            StructuralMotifRules.check_model_extraction_surface,
+            StructuralMotifRules.check_privacy_attack_surface,
+            StructuralMotifRules.check_attention_vulnerability,
         ]
     
     def analyze_node(self, node_id: str, op_type: str, attributes: dict,
@@ -6163,7 +6191,7 @@ class StructuralMotifAnalyzer:
                 # Determine severity based on capacity
                 if capacity_mb > 100:
                     sev = Severity.HIGH
-                    finding = FindingType.VULNERABILITY
+                    finding = FindingType.STRUCTURAL_MOTIF
                 elif capacity_mb > 50:
                     sev = Severity.MEDIUM
                     finding = FindingType.GADGET
@@ -6171,7 +6199,7 @@ class StructuralMotifAnalyzer:
                     sev = Severity.INFO
                     finding = FindingType.CHARACTERISTIC
                     
-                all_vulns.append(Vulnerability(
+                all_vulns.append(StructuralFinding(
                     id="IMPNET-MODEL-TOTAL",
                     category=ThreatCategory.IMPNET_IMPLANTATION,
                     severity=sev,
@@ -6229,7 +6257,7 @@ class StructuralMotifAnalyzer:
         
         # If existing backdoor detected, add as CRITICAL vulnerability
         if report.shadowlogic_assessment.existing_backdoor_detected:
-            all_vulns.append(Vulnerability(
+            all_vulns.append(StructuralFinding(
                 id="SHADOWLOGIC-EXISTING-BACKDOOR",
                 category=ThreatCategory.SHADOWLOGIC_INJECTION,
                 severity=Severity.CRITICAL,
@@ -6249,14 +6277,14 @@ class StructuralMotifAnalyzer:
                           "Consider replacing model with known-good version.",
                 references=["https://hiddenlayer.com/innovation-hub/shadowlogic/"],
                 cvss_estimate=9.5,
-                finding_type=FindingType.VULNERABILITY
+                finding_type=FindingType.STRUCTURAL_MOTIF
             ))
             report.vulnerabilities = all_vulns
         
         # Add susceptibility vulnerability based on score
         if report.shadowlogic_assessment.susceptibility_score >= 60:
             severity = Severity.HIGH if report.shadowlogic_assessment.susceptibility_score >= 80 else Severity.MEDIUM
-            all_vulns.append(Vulnerability(
+            all_vulns.append(StructuralFinding(
                 id="SHADOWLOGIC-INJECTION-SUSCEPTIBILITY",
                 category=ThreatCategory.SHADOWLOGIC_INJECTION,
                 severity=severity,
@@ -6281,7 +6309,7 @@ class StructuralMotifAnalyzer:
                     "https://arxiv.org/abs/2511.00664"
                 ],
                 cvss_estimate=7.5 if severity == Severity.HIGH else 6.0,
-                finding_type=FindingType.VULNERABILITY
+                finding_type=FindingType.STRUCTURAL_MOTIF
             ))
             report.vulnerabilities = all_vulns
         
@@ -6332,11 +6360,14 @@ class StructuralMotifAnalyzer:
         report.executive_summary = self._generate_executive_summary(report)
         report.attack_surface_summary = self._generate_attack_surface_summary(report)
         report.hardening_recommendations = self._generate_hardening_recommendations(report)
-        
+
+        from graph_surgeon.taxonomy.display import apply_registry_display_to_findings
+        apply_registry_display_to_findings(report.vulnerabilities)
+
         return report
     
     def _detect_structural_vulnerabilities(self, nodes: List[NodeSecurityProfile],
-                                           edges: List[Tuple[str, str]]) -> List[Vulnerability]:
+                                           edges: List[Tuple[str, str]]) -> List[StructuralFinding]:
         """
         Detect model-level structural patterns that indicate vulnerabilities.
         
@@ -6357,7 +6388,7 @@ class StructuralMotifAnalyzer:
         bn_count = op_counts.get("BatchNormalization", 0) + op_counts.get("LayerNormalization", 0)
         
         if total_fusion > 10 and bn_count < total_fusion * 0.5:
-            vulns.append(Vulnerability(
+            vulns.append(StructuralFinding(
                 id="STRUCT-FUSION-UNPROTECTED",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.MEDIUM,
@@ -6375,7 +6406,7 @@ class StructuralMotifAnalyzer:
                           "Implement channel-wise clipping after Concat.",
                 references=["https://arxiv.org/abs/1705.07204"],
                 cvss_estimate=5.5,
-                finding_type=FindingType.VULNERABILITY
+                finding_type=FindingType.STRUCTURAL_MOTIF
             ))
         
         # Check 2: MaxPool in early layers (spike amplification risk)
@@ -6388,7 +6419,7 @@ class StructuralMotifAnalyzer:
                 early_maxpool.append(node.node_id)
         
         if early_maxpool:
-            vulns.append(Vulnerability(
+            vulns.append(StructuralFinding(
                 id="STRUCT-EARLY-MAXPOOL",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.MEDIUM if len(early_maxpool) > 1 else Severity.LOW,
@@ -6406,13 +6437,13 @@ class StructuralMotifAnalyzer:
                           "add normalization immediately after.",
                 references=["https://arxiv.org/abs/1710.08864"],  # One-pixel attack
                 cvss_estimate=4.5 if len(early_maxpool) == 1 else 5.5,
-                finding_type=FindingType.VULNERABILITY
+                finding_type=FindingType.STRUCTURAL_MOTIF
             ))
         
         # Check 3: No explicit normalization in model
         # Note: Many exported ONNX models have fused BatchNorm (folded into Conv weights)
         if bn_count == 0 and op_counts.get("Conv", 0) > 5:
-            vulns.append(Vulnerability(
+            vulns.append(StructuralFinding(
                 id="STRUCT-NO-EXPLICIT-NORM",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.LOW,  # Lower severity - likely fused BatchNorm
@@ -6439,7 +6470,7 @@ class StructuralMotifAnalyzer:
         # Check 4: Very deep network without residual connections
         conv_count = op_counts.get("Conv", 0)
         if conv_count > 30 and add_count < conv_count * 0.1:
-            vulns.append(Vulnerability(
+            vulns.append(StructuralFinding(
                 id="STRUCT-DEEP-NO-SKIP",
                 category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                 severity=Severity.LOW,
@@ -6462,9 +6493,9 @@ class StructuralMotifAnalyzer:
         
         return vulns
     
-    def _detect_attack_chains(self, gadgets: List[Vulnerability], 
+    def _detect_attack_chains(self, gadgets: List[StructuralFinding], 
                                nodes: List[NodeSecurityProfile],
-                               edges: List[Tuple[str, str]]) -> List[Vulnerability]:
+                               edges: List[Tuple[str, str]]) -> List[StructuralFinding]:
         """
         Detect combinations of gadgets that together form real vulnerabilities.
         
@@ -6505,7 +6536,7 @@ class StructuralMotifAnalyzer:
                 )
                 
                 if upstream_linears >= 2:
-                    chains.append(Vulnerability(
+                    chains.append(StructuralFinding(
                         id=f"CHAIN-FUSION-AMP-{concat.node_id}",
                         category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                         severity=Severity.HIGH,
@@ -6547,7 +6578,7 @@ class StructuralMotifAnalyzer:
                     chain_start = conv.node_id
             else:
                 if unnormalized_chain_length >= 3:
-                    chains.append(Vulnerability(
+                    chains.append(StructuralFinding(
                         id=f"CHAIN-UNNORM-{chain_start}",
                         category=ThreatCategory.ADVERSARIAL_PERTURBATION,
                         severity=Severity.MEDIUM,
@@ -6571,7 +6602,7 @@ class StructuralMotifAnalyzer:
         
         return chains
     
-    def _calculate_category_risk(self, vulns: List[Vulnerability], 
+    def _calculate_category_risk(self, vulns: List[StructuralFinding], 
                                  category: ThreatCategory) -> float:
         """
         Calculate risk score for a specific threat category.
@@ -6596,7 +6627,7 @@ class StructuralMotifAnalyzer:
         }
         
         finding_type_weights = {
-            FindingType.VULNERABILITY: 1.0,
+            FindingType.STRUCTURAL_MOTIF: 1.0,
             FindingType.ATTACK_CHAIN: 1.0,
             FindingType.GADGET: 0.3,
             FindingType.CHARACTERISTIC: 0.1
@@ -6611,7 +6642,7 @@ class StructuralMotifAnalyzer:
             severity_score = severity_weights.get(v.severity, 10)
             
             # Only count actual vulns and chains for the count
-            if v.finding_type in [FindingType.VULNERABILITY, FindingType.ATTACK_CHAIN]:
+            if v.finding_type in [FindingType.STRUCTURAL_MOTIF, FindingType.ATTACK_CHAIN]:
                 vuln_count += 1
                 # Diminishing returns for multiple vulns of same type
                 diminish = 1.0 / (1 + 0.2 * max(0, vuln_count - 1))
@@ -6641,7 +6672,7 @@ class StructuralMotifAnalyzer:
         lines.append(f"**Overall Risk Level: {risk_level}** (Score: {report.overall_risk_score:.1f}/100)\n")
         
         # Separate findings by type for clearer reporting
-        vulns = [v for v in report.vulnerabilities if v.finding_type == FindingType.VULNERABILITY]
+        vulns = [v for v in report.vulnerabilities if v.finding_type == FindingType.STRUCTURAL_MOTIF]
         chains = [v for v in report.vulnerabilities if v.finding_type == FindingType.ATTACK_CHAIN]
         gadgets = [v for v in report.vulnerabilities if v.finding_type == FindingType.GADGET]
         characteristics = [v for v in report.vulnerabilities if v.finding_type == FindingType.CHARACTERISTIC]
@@ -6861,21 +6892,11 @@ class StructuralMotifAnalyzer:
 
 
 def export_report_json(report: ModelSecurityReport, filepath: str):
-    """Export security report to JSON."""
-    
-    def serialize(obj):
-        if isinstance(obj, Enum):
-            return obj.value
-        if hasattr(obj, '__dict__'):
-            return {k: serialize(v) for k, v in obj.__dict__.items()}
-        if isinstance(obj, dict):
-            return {k: serialize(v) for k, v in obj.items()}
-        if isinstance(obj, list):
-            return [serialize(v) for v in obj]
-        return obj
-    
-    with open(filepath, 'w') as f:
-        json.dump(serialize(report), f, indent=2)
+    """Export structural report to JSON without security ratings."""
+    from graph_surgeon.reporting.sanitize import serialize_for_export
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(serialize_for_export(report), f, indent=2)
 
 
 # =============================================================================

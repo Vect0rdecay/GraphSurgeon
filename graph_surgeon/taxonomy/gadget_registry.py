@@ -2,7 +2,7 @@
 Gadget Registry - Research Provenance Tracking for NN Security Analyzer
 
 This registry tracks the research basis, confidence levels, and versioning for all
-gadgets (vulnerability patterns) detected by the tool.
+structural motifs detected by the tool.
 
 Purpose:
 - Ensure detection logic is evidence-based

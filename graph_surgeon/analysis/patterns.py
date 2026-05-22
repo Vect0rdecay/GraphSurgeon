@@ -17,6 +17,8 @@ from enum import Enum
 from typing import Dict, List, Optional, Set, Tuple, Any
 from collections import defaultdict
 
+from graph_surgeon.graph.topology import GraphTopologyConfig
+
 
 class PatternRisk(Enum):
     """Risk level of detected patterns."""
@@ -49,6 +51,9 @@ class StructuralPattern:
     attack_implications: str
     research_notes: str
     recommendations: List[str] = field(default_factory=list)
+    registry_id: Optional[str] = None
+    research_basis: List[str] = field(default_factory=list)
+    attacks_enabled: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -81,8 +86,17 @@ class StructuralAnalysisReport:
     longest_linear_chain: int = 0
     
     # Scores
-    vulnerability_score: float = 0.0   # Higher = more vulnerable
-    robustness_score: float = 0.0      # Higher = more robust
+    structural_score: float = 0.0  # Higher = more attack-surface exposure
+    robustness_score: float = 0.0  # Higher = more robust
+
+    @property
+    def vulnerability_score(self) -> float:
+        """Deprecated alias for structural_score."""
+        return self.structural_score
+
+    @vulnerability_score.setter
+    def vulnerability_score(self, value: float) -> None:
+        self.structural_score = value
     
     # Research workflow outputs
     gradient_bottlenecks: List[str] = field(default_factory=list)
@@ -297,11 +311,52 @@ class StructuralPatternAnalyzer:
         }
     }
     
-    def __init__(self):
+    def __init__(self, topology_config: Optional[GraphTopologyConfig] = None):
+        self.topology_config = topology_config or GraphTopologyConfig()
         self.nodes: Dict[str, Dict] = {}  # node_id -> node info
         self.edges: List[Tuple[str, str]] = []
         self.adjacency: Dict[str, List[str]] = defaultdict(list)  # node -> successors
         self.reverse_adjacency: Dict[str, List[str]] = defaultdict(list)  # node -> predecessors
+
+    def _early_depth_threshold(self, max_depth: int) -> int:
+        return self.topology_config.early_depth_threshold(max_depth)
+
+    def _late_depth_threshold(self, max_depth: int) -> int:
+        return self.topology_config.late_depth_threshold(max_depth)
+
+    def _pattern_from_registry(
+        self,
+        gadget_id: str,
+        pattern_id: str,
+        nodes_involved: List[str],
+        category: PatternCategory,
+        *,
+        attack_implications: str = "",
+        research_notes: str = "",
+    ) -> StructuralPattern:
+        from graph_surgeon.taxonomy.display import format_pattern_from_registry
+
+        data = format_pattern_from_registry(
+            gadget_id,
+            pattern_id=pattern_id,
+            nodes_involved=nodes_involved,
+        )
+        return StructuralPattern(
+            id=data["id"],
+            name=data["name"],
+            category=category,
+            risk=PatternRisk.MEDIUM,
+            nodes_involved=nodes_involved,
+            description=data["description"],
+            attack_implications=attack_implications or (
+                f"Associated attack classes from literature: "
+                f"{', '.join(data.get('attacks_enabled', []))}"
+            ),
+            research_notes=research_notes,
+            registry_id=gadget_id,
+            research_basis=data.get("research_basis", []),
+            attacks_enabled=data.get("attacks_enabled", []),
+        )
         
     def build_graph(self, nodes: List[Dict], edges: List[Tuple[str, str]]):
         """Build internal graph representation from nodes and edges."""
@@ -374,12 +429,7 @@ class StructuralPatternAnalyzer:
         report.gradient_bottlenecks = self._find_gradient_bottlenecks()
         report.feature_fusion_points = self._find_feature_fusion_points()
         report.amplification_layers = self._find_amplification_layers()
-        report.recommended_defense_points = self._recommend_defense_points()
-        
-        # Calculate scores
-        report.vulnerability_score = self._calculate_vulnerability_score(report)
-        report.robustness_score = self._calculate_robustness_score(report)
-        
+
         return report
     
     # =========================================================================
@@ -499,59 +549,48 @@ class StructuralPatternAnalyzer:
         return patterns
     
     def _detect_maxpool_amplification(self) -> List[StructuralPattern]:
-        """
-        Detect MaxPool operations that amplify perturbation spikes.
-        
-        MaxPool selects maximum values, which can amplify adversarial
-        perturbations if the attack creates local maxima.
-        """
+        """Detect MaxPool after fusion (MAXPOOL_AFTER_FUSION registry motif)."""
         patterns = []
-        
+        fusion_ops = self.FUSION_OPS
+        after_fusion: List[str] = []
+
         for node_id, node in self.nodes.items():
             if node.get("op_type") not in {"MaxPool", "GlobalMaxPool"}:
                 continue
-            
-            kernel = node.get("attributes", {}).get("kernel_shape", [2, 2])
-            kernel_size = kernel[0] * kernel[1] if isinstance(kernel, list) else kernel
-            
-            # Check if preceded by ReLU (compounds the issue)
-            predecessors = self.reverse_adjacency.get(node_id, [])
-            preceded_by_relu = any(
-                self.nodes.get(p, {}).get("op_type") == "Relu" 
-                for p in predecessors
+            visited = {node_id}
+            frontier = list(self.reverse_adjacency.get(node_id, []))
+            found_fusion = False
+            for _ in range(3):
+                if found_fusion:
+                    break
+                next_frontier = []
+                for pred in frontier:
+                    if pred in visited:
+                        continue
+                    visited.add(pred)
+                    op = self.nodes.get(pred, {}).get("op_type", "")
+                    if op in fusion_ops:
+                        found_fusion = True
+                        break
+                    next_frontier.extend(self.reverse_adjacency.get(pred, []))
+                frontier = next_frontier
+
+            if found_fusion:
+                after_fusion.append(node_id)
+
+        if after_fusion:
+            patterns.append(
+                self._pattern_from_registry(
+                    "MAXPOOL_AFTER_FUSION",
+                    "MAXPOOL-AFTER-FUSION",
+                    after_fusion,
+                    PatternCategory.AMPLIFICATION,
+                    research_notes=(
+                        "MaxPool within 3 hops downstream of Concat/Add fusion."
+                    ),
+                )
             )
-            
-            risk = PatternRisk.HIGH if preceded_by_relu else PatternRisk.MEDIUM
-            
-            patterns.append(StructuralPattern(
-                id=f"MAXPOOL-AMP-{node_id}",
-                name=f"Spike Amplification at {node_id}",
-                category=PatternCategory.AMPLIFICATION,
-                risk=risk,
-                nodes_involved=[node_id],
-                description=f"MaxPool with kernel size {kernel_size} selects maximum values, "
-                           f"amplifying perturbation spikes. "
-                           f"{'Preceded by ReLU which compounds the issue.' if preceded_by_relu else ''}",
-                attack_implications="""
-                    - Adversarial perturbations creating local maxima will be preserved
-                    - Non-maximum clean signal values are discarded
-                    - Sparse but strong perturbations are highly effective
-                    - MaxPool after ReLU is particularly vulnerable (ReLU zeros negatives,
-                      MaxPool selects remaining peaks)
-                """,
-                research_notes="""
-                    MaxPool is a critical amplification point. An attacker only needs to
-                    perturb one pixel per pooling region to control the output. Consider
-                    the receptive field - perturbations at MaxPool inputs have outsized
-                    influence on downstream computations.
-                """,
-                recommendations=[
-                    "Consider replacing with AveragePool for robustness",
-                    "Use overlapping pooling to reduce spike sensitivity",
-                    "Add pre-pooling smoothing or noise injection"
-                ]
-            ))
-        
+
         return patterns
     
     def _detect_linear_chains(self) -> List[StructuralPattern]:
@@ -860,7 +899,7 @@ class StructuralPatternAnalyzer:
         patterns = []
         depths = self._compute_node_depths()
         max_depth = max(depths.values()) if depths else 0
-        early_threshold = max_depth // 4  # First quarter
+        early_threshold = self._early_depth_threshold(max_depth)
         
         for node_id, node in self.nodes.items():
             if node.get("op_type") != "Conv":
@@ -921,83 +960,48 @@ class StructuralPatternAnalyzer:
         
         if bn_nodes:
             attack_info = self.ATTACK_SURFACE_MAPPING["batchnorm"]
-            
-            patterns.append(StructuralPattern(
-                id=f"BATCHNORM-VULN",
-                name=f"BatchNorm Distribution Shift Vulnerability ({len(bn_nodes)} layers)",
-                category=PatternCategory.ATTACK_SURFACE,
-                risk=PatternRisk.MEDIUM,
-                nodes_involved=bn_nodes,
-                description=f"Model contains {len(bn_nodes)} BatchNorm layers that use "
-                           f"fixed running statistics at inference time. These statistics "
-                           f"assume a specific input distribution that attackers can violate.",
-                attack_implications=f"""
-                    Applicable attacks: {', '.join(attack_info['attacks'])}
-                    
-                    {attack_info['exploitation']}
-                    
-                    BatchNorm computes: (x - running_mean) / sqrt(running_var + eps) * gamma + beta
-                    
-                    Adversarial inputs that shift the effective distribution cause the
-                    normalization to produce unexpected outputs. Adaptive attacks can
-                    specifically target BN statistics mismatch.
-                """,
-                research_notes="""
-                    At inference, BatchNorm uses fixed running_mean and running_var from training.
-                    Adversarial inputs may have very different statistics, causing the normalization
-                    to fail. Consider how perturbations affect the post-normalization distribution.
-                """,
-                recommendations=[
-                    "Consider LayerNorm or GroupNorm for robustness",
-                    "Implement distribution monitoring at inference",
-                    "Evaluate adversarial training with distribution-aware attacks"
-                ]
-            ))
+            patterns.append(
+                self._pattern_from_registry(
+                    "NORMALIZER",
+                    "BATCHNORM-MOTIF",
+                    bn_nodes,
+                    PatternCategory.ATTACK_SURFACE,
+                    attack_implications=(
+                        f"Literature attack classes: {', '.join(attack_info['attacks'])}. "
+                        f"{attack_info['exploitation']}"
+                    ),
+                    research_notes=(
+                        "At inference, BatchNorm uses fixed running statistics from training."
+                    ),
+                )
+            )
         
         return patterns
     
     def _detect_global_pooling_vuln(self) -> List[StructuralPattern]:
-        """
-        Detect global pooling layers vulnerable to feature-space attacks.
-        """
+        """Detect global pooling motifs (GAP_FC_HEAD registry)."""
         patterns = []
-        
-        for node_id, node in self.nodes.items():
-            if node.get("op_type") not in self.GLOBAL_POOLING_OPS:
-                continue
-            
+        gap_nodes = [
+            nid for nid, n in self.nodes.items()
+            if n.get("op_type") in self.GLOBAL_POOLING_OPS
+        ]
+
+        if gap_nodes:
             attack_info = self.ATTACK_SURFACE_MAPPING["global_pooling"]
-            
-            patterns.append(StructuralPattern(
-                id=f"GLOBAL-POOL-{node_id}",
-                name=f"Global Pooling Feature Target at {node_id}",
-                category=PatternCategory.FEATURE_EXTRACTION,
-                risk=PatternRisk.MEDIUM,
-                nodes_involved=[node_id],
-                description=f"Global pooling at '{node_id}' collapses spatial dimensions "
-                           f"into a feature vector. This creates a natural target for "
-                           f"feature-space attacks that manipulate high-level representations.",
-                attack_implications=f"""
-                    Applicable attacks: {', '.join(attack_info['attacks'])}
-                    
-                    {attack_info['exploitation']}
-                    
-                    The global feature vector is often the final representation before
-                    classification. Attacks can optimize perturbations to push this
-                    representation toward target class prototypes.
-                """,
-                research_notes="""
-                    Global pooling creates an information bottleneck. Analyze what features
-                    are most influential in this representation. Feature-space attacks may
-                    be more transferable than logit-space attacks.
-                """,
-                recommendations=[
-                    "Monitor feature-space distances to class prototypes",
-                    "Implement feature-space adversarial training",
-                    "Consider multiple pooling strategies for ensemble robustness"
-                ]
-            ))
-        
+            patterns.append(
+                self._pattern_from_registry(
+                    "GAP_FC_HEAD",
+                    "GAP-FC-HEAD-MOTIF",
+                    gap_nodes,
+                    PatternCategory.FEATURE_EXTRACTION,
+                    attack_implications=(
+                        f"Literature attack classes: {', '.join(attack_info['attacks'])}. "
+                        f"{attack_info['exploitation']}"
+                    ),
+                    research_notes="Global pooling collapses spatial dimensions before classification.",
+                )
+            )
+
         return patterns
     
     def _detect_fc_layer_vuln(self) -> List[StructuralPattern]:
@@ -1384,13 +1388,16 @@ class StructuralPatternAnalyzer:
             # Check if these are early in the network
             depths = self._compute_node_depths()
             max_depth = max(depths.values()) if depths else 1
-            early_valid = [n for n in valid_conv_nodes if depths.get(n, 0) < max_depth // 3]
+            early_valid = [
+                n for n in valid_conv_nodes
+                if self.topology_config.is_early(depths.get(n, 0), max_depth)
+            ]
             
             risk = PatternRisk.HIGH if early_valid else PatternRisk.MEDIUM
             
             patterns.append(StructuralPattern(
                 id="VALID-CONV-BOUNDARY",
-                name=f"Boundary Vulnerability: Valid Convolutions ({len(valid_conv_nodes)} nodes)",
+                name=f"VALID_CONV_BOUNDARY — Valid Conv Edge Sensitivity ({len(valid_conv_nodes)} nodes)",
                 category=PatternCategory.FEATURE_EXTRACTION,
                 risk=risk,
                 nodes_involved=valid_conv_nodes,
@@ -1441,7 +1448,7 @@ class StructuralPatternAnalyzer:
         
         depths = self._compute_node_depths()
         max_depth = max(depths.values()) if depths else 1
-        early_threshold = max_depth // 3
+        early_threshold = self._early_depth_threshold(max_depth)
         
         # Find early linear ops
         early_linear = []
@@ -1749,7 +1756,7 @@ class StructuralPatternAnalyzer:
         
         # Find pooling/strided conv in early layers (first 1/3 of depth)
         max_depth = self._compute_max_depth()
-        early_threshold = max_depth // 3
+        early_threshold = self._early_depth_threshold(max_depth)
         
         depths = self._compute_node_depths()
         
@@ -1913,8 +1920,14 @@ class StructuralPatternAnalyzer:
         for node_id, depth in depths.items():
             depth_counts[depth] += 1
         
-        early_count = sum(depth_counts[d] for d in range(max_depth // 3))
-        late_count = sum(depth_counts[d] for d in range(2 * max_depth // 3, max_depth + 1))
+        early_count = sum(
+            depth_counts[d]
+            for d in range(self._early_depth_threshold(max_depth) + 1)
+        )
+        late_count = sum(
+            depth_counts[d]
+            for d in range(self._late_depth_threshold(max_depth), max_depth + 1)
+        )
         
         if early_count < late_count * 0.5:  # Early layers are less than half of late
             patterns.append(StructuralPattern(
@@ -2017,7 +2030,7 @@ class StructuralPatternAnalyzer:
         # Early stride -> Fourier, frequency attacks
         depths = self._compute_node_depths()
         max_depth = max(depths.values()) if depths else 0
-        early_threshold = max_depth // 4
+        early_threshold = self._early_depth_threshold(max_depth)
         
         early_stride_nodes = []
         for nid, n in self.nodes.items():
@@ -2289,7 +2302,10 @@ class StructuralPatternAnalyzer:
         depths = self._compute_node_depths()
         max_depth = max(depths.values()) if depths else 0
         
-        early_nodes = [nid for nid, d in depths.items() if d <= max_depth // 4]
+        early_nodes = [
+            nid for nid, d in depths.items()
+            if self.topology_config.is_early(d, max_depth)
+        ]
         if early_nodes:
             defense_points.append(f"EARLY_LAYER_DEFENSE: {early_nodes[0]} (input sanitization)")
         
@@ -2316,9 +2332,9 @@ class StructuralPatternAnalyzer:
     # SCORING
     # =========================================================================
     
-    def _calculate_vulnerability_score(self, report: StructuralAnalysisReport) -> float:
+    def _calculate_structural_score(self, report: StructuralAnalysisReport) -> float:
         """
-        Calculate overall vulnerability score (0-100).
+        Calculate overall structural attack-surface score (0-100).
         
         Score reflects how exploitable the model architecture is,
         NOT just how many patterns exist. Uses weighted scoring
@@ -2370,7 +2386,7 @@ class StructuralPatternAnalyzer:
         considers positive defensive features. A high vulnerability score
         necessarily limits the maximum robustness score.
         """
-        vuln_score = report.vulnerability_score
+        vuln_score = report.structural_score
         
         # Maximum possible robustness decreases as vulnerability increases
         # At vuln=0, max robustness=100. At vuln=100, max robustness=20.
@@ -2413,74 +2429,63 @@ def generate_structural_report_text(report: StructuralAnalysisReport) -> str:
     """Generate human-readable text report from structural analysis."""
     lines = [
         "=" * 70,
-        "STRUCTURAL SECURITY ANALYSIS REPORT",
+        "STRUCTURAL PATTERN ANALYSIS REPORT",
         "=" * 70,
         f"\nModel: {report.model_name}",
         f"Total Nodes: {report.total_nodes}",
         f"Max Depth: {report.max_depth}",
         f"Max Fan-In: {report.max_fan_in}",
         f"Longest Linear Chain: {report.longest_linear_chain}",
-        f"\nVulnerability Score: {report.vulnerability_score:.1f}/100",
-        f"Robustness Score: {report.robustness_score:.1f}/100",
     ]
-    
-    # High-risk patterns
+
     if report.high_risk_patterns:
         lines.append("\n" + "-" * 70)
-        lines.append("HIGH-RISK PATTERNS DETECTED")
+        lines.append("STRUCTURAL PATTERNS")
         lines.append("-" * 70)
-        
-        for pattern in sorted(report.high_risk_patterns, 
-                             key=lambda p: (p.risk.value, p.name)):
-            lines.append(f"\n[{pattern.risk.value.upper()}] {pattern.name}")
+
+        for pattern in sorted(report.high_risk_patterns, key=lambda p: p.name):
+            lines.append(f"\n{pattern.name}")
+            if pattern.registry_id:
+                lines.append(f"  Registry ID: {pattern.registry_id}")
             lines.append(f"  Category: {pattern.category.value}")
             lines.append(f"  Nodes: {', '.join(pattern.nodes_involved[:5])}")
             lines.append(f"  Description: {pattern.description.strip()[:200]}...")
-            if pattern.recommendations:
-                lines.append(f"  Recommendations:")
-                for rec in pattern.recommendations[:2]:
-                    lines.append(f"    - {rec}")
-    
-    # Robustness indicators
+            if pattern.research_notes:
+                note = pattern.research_notes.strip().split("\n")[0][:160]
+                lines.append(f"  Notes: {note}...")
+
     if report.robustness_indicators:
         lines.append("\n" + "-" * 70)
-        lines.append("ROBUSTNESS INDICATORS (Positive)")
+        lines.append("ARCHITECTURAL INDICATORS")
         lines.append("-" * 70)
-        
+
         for pattern in report.robustness_indicators:
-            lines.append(f"\n[+] {pattern.name}")
+            lines.append(f"\n{pattern.name}")
             lines.append(f"    {pattern.description.strip()[:150]}...")
-    
-    # Attack surface mapping
+
     if report.attack_surfaces:
         lines.append("\n" + "-" * 70)
-        lines.append("ATTACK SURFACE MAPPING")
+        lines.append("ASSOCIATED ATTACK CLASSES")
         lines.append("-" * 70)
-        
+
         for surface in report.attack_surfaces:
             lines.append(f"\nComponent: {surface.component}")
             lines.append(f"  Attack Class: {surface.attack_class}")
             lines.append(f"  Techniques: {', '.join(surface.attack_techniques[:3])}")
             lines.append(f"  Nodes: {', '.join(surface.node_ids[:5])}")
-    
-    # Research workflow
+
     lines.append("\n" + "-" * 70)
-    lines.append("ADVERSARIAL RESEARCH WORKFLOW TARGETS")
+    lines.append("GRAPH WORKFLOW TARGETS")
     lines.append("-" * 70)
-    
+
     if report.gradient_bottlenecks:
         lines.append(f"\nGradient Bottlenecks: {', '.join(report.gradient_bottlenecks[:10])}")
     if report.feature_fusion_points:
         lines.append(f"Feature Fusion Points: {', '.join(report.feature_fusion_points[:10])}")
     if report.amplification_layers:
         lines.append(f"Amplification Layers: {', '.join(report.amplification_layers[:10])}")
-    
-    if report.recommended_defense_points:
-        lines.append(f"\nRecommended Defense Points:")
-        for dp in report.recommended_defense_points:
-            lines.append(f"  - {dp}")
-    
+
     lines.append("\n" + "=" * 70)
-    
+
     return "\n".join(lines)
 

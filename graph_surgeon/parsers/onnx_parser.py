@@ -398,7 +398,6 @@ def analyze_onnx_graph(filepath: str, output_path: str = None, verbose: bool = F
     
     if verbose:
         print(f"\nMotif Analysis Complete")
-        print(f"  Overall Risk Score: {report.overall_risk_score:.1f}/100")
         print(f"  Total structural findings: {len(report.vulnerabilities)}")
     
     # Export if requested
@@ -410,36 +409,54 @@ def analyze_onnx_graph(filepath: str, output_path: str = None, verbose: bool = F
     return report
 
 
+def analyze_onnx_patterns(filepath: str):
+    """
+    High-level structural pattern analysis for an ONNX model.
+
+    Returns a StructuralAnalysisReport from StructuralPatternAnalyzer.
+    """
+    from graph_surgeon.analysis.patterns import StructuralPatternAnalyzer
+
+    parser = ONNXGraphParser()
+    node_profiles, edges, graph_info = parser.analyze_model(filepath)
+
+    pattern_nodes = [
+        {
+            "node_id": profile.node_id,
+            "op_type": profile.op_type,
+            "attributes": profile.attributes,
+        }
+        for profile in node_profiles
+    ]
+
+    analyzer = StructuralPatternAnalyzer()
+    return analyzer.analyze(
+        nodes=pattern_nodes,
+        edges=edges,
+        model_name=graph_info.get("name") or filepath,
+    )
+
+
 # Convenience function for quick analysis
 def quick_scan(filepath: str) -> str:
     """
-    Quick security scan of an ONNX model.
-    
-    Returns a brief text summary of findings.
+    Quick structural scan of an ONNX model.
+
+    Returns a brief text summary of findings without security ratings.
     """
     report = analyze_onnx_graph(filepath, verbose=False)
-    
+
     lines = [
         f"Motif Scan: {filepath}",
         f"=" * 50,
-        f"Overall Risk: {report.overall_risk_score:.1f}/100",
-        f"",
-        f"Risk Breakdown:",
-        f"  - Adversarial Attack Risk: {report.adversarial_risk_score:.1f}",
-        f"  - ShadowLogic Risk: {report.shadowlogic_risk_score:.1f}",
-        f"  - ImpNet Risk: {report.impnet_risk_score:.1f}",
-        f"  - Model Extraction Risk: {report.extraction_risk_score:.1f}",
-        f"  - Privacy Risk: {report.privacy_risk_score:.1f}",
-        f"",
         f"Findings: {len(report.vulnerabilities)} structural findings",
     ]
-    
-    # Add critical/high findings
-    critical = [v for v in report.vulnerabilities if v.severity.value in ["critical", "high"]]
-    if critical:
-        lines.append(f"\nCritical/High Severity Issues:")
-        for v in critical[:5]:
-            lines.append(f"  - [{v.severity.value.upper()}] {v.title}")
-    
+
+    if report.vulnerabilities:
+        lines.append("\nNotable findings:")
+        for finding in report.vulnerabilities[:8]:
+            node_str = f" ({finding.node_id})" if finding.node_id else ""
+            lines.append(f"  - {finding.title}{node_str}")
+
     return "\n".join(lines)
 

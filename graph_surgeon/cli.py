@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """GraphSurgeon CLI: ONNX DAG reverse engineering."""
 
+from graph_surgeon._env import configure_runtime_quiet
+
+configure_runtime_quiet()
+
 import argparse
 import json
 import os
@@ -35,6 +39,8 @@ def main(argv=None):
     # patterns
     p_pat = sub.add_parser("patterns", help="High-level DAG structural patterns")
     p_pat.add_argument("model")
+    p_pat.add_argument("-o", "--output", help="Write text report to file")
+    p_pat.add_argument("--json", action="store_true", help="Emit JSON report on stdout")
     p_pat.set_defaults(func=cmd_patterns)
 
     # flow
@@ -46,6 +52,8 @@ def main(argv=None):
     p_cat = sub.add_parser("catalog", help="Motif and technique reference")
     p_cat.add_argument("--category")
     p_cat.add_argument("--technique")
+    p_cat.add_argument("--gadget", help="Lookup structural motif by registry ID (e.g. GAP_FC_HEAD)")
+    p_cat.add_argument("--chain", help="Lookup compound motif chain by registry ID")
     p_cat.set_defaults(func=cmd_catalog)
 
     # operators
@@ -135,8 +143,28 @@ def cmd_motifs(args):
 
 
 def cmd_patterns(args):
-    print("Structural pattern analysis requires full graph context.")
-    print(f"Run: graph-surgeon motifs {args.model}")
+    import os
+
+    from graph_surgeon.parsers.onnx_parser import analyze_onnx_patterns
+    from graph_surgeon.reporting.sanitize import serialize_for_export
+
+    if not os.path.exists(args.model):
+        print(f"Error: file not found: {args.model}", file=sys.stderr)
+        return 1
+
+    report = analyze_onnx_patterns(args.model)
+    if args.json:
+        print(json.dumps(serialize_for_export(report), indent=2))
+    else:
+        from graph_surgeon.analysis.patterns import generate_structural_report_text
+
+        text = generate_structural_report_text(report)
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as f:
+                f.write(text)
+            print(f"Report saved to: {args.output}")
+        else:
+            print(text)
     return 0
 
 
@@ -150,7 +178,14 @@ def cmd_flow(args):
 
 def cmd_catalog(args):
     from graph_surgeon.taxonomy import motif_catalog
+    from graph_surgeon.taxonomy.display import format_catalog_chain, format_catalog_gadget
 
+    if args.gadget:
+        print(format_catalog_gadget(args.gadget))
+        return 0
+    if args.chain:
+        print(format_catalog_chain(args.chain))
+        return 0
     if args.technique:
         t = motif_catalog.get_technique_by_id(args.technique)
         if not t:

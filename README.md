@@ -29,14 +29,21 @@ Minimal install (no runtime validation or tests):
 ```bash
 graph-surgeon inspect model.onnx
 graph-surgeon topology model.onnx
+graph-surgeon patterns model.onnx
 graph-surgeon motifs model.onnx -o report.json
 graph-surgeon flow model.onnx
+graph-surgeon catalog --gadget GAP_FC_HEAD
+graph-surgeon catalog --chain CHAIN-PATCH-ATTACK-SURFACE
 graph-surgeon catalog --category adversarial_perturbation
 graph-surgeon operators --op Conv
 graph-surgeon edit validate edited.onnx --level runnable
 graph-surgeon edit remove-node model.onnx NODE_NAME -o edited.onnx
 graph-surgeon diff baseline.onnx edited.onnx
 ```
+
+Display titles use registry IDs (for example `GAP_FC_HEAD — Global Average Pool → FC Head`).
+Each finding indexes AML literature by graph structure; it does not rate security posture.
+Use `catalog --gadget` or `catalog --chain` to look up `research_basis` and associated attack classes.
 
 ## Python API
 
@@ -68,9 +75,11 @@ stats = analyze_onnx_weights("model.onnx")
 print(stats.summary())
 ```
 
-## What motifs mean
+## What motifs and patterns mean
 
-Structural motifs describe **attack landscape** (what perturbation classes are structurally plausible on this graph). They do **not** predict attack success rate, robustness, or exploitability. Training and deployment context determine whether attacks succeed.
+Structural motifs and patterns describe **attack landscape**: which adversarial attack classes published in the AML literature are structurally plausible on this ONNX graph. GraphSurgeon is a research-grounded structural index, not a scanner that confirms exploitability or assigns severity.
+
+Outputs omit risk scores and severity tiers. Training, weights, and deployment determine whether attacks succeed.
 
 ## Comparison to Netron
 

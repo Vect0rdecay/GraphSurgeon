@@ -75,7 +75,10 @@ def test_motifs_writes_json(model_file, tmp_path):
     assert proc.returncode == 0, proc.stderr or proc.stdout
     assert out.exists()
     data = json.loads(out.read_text())
-    assert "overall_risk_score" in data
+    assert "structural_findings" in data or "vulnerabilities" in data
+    findings = data.get("structural_findings") or data.get("vulnerabilities") or []
+    assert isinstance(findings, list)
+    assert "overall_risk_score" not in data
 
 
 @pytest.mark.integration
@@ -94,4 +97,28 @@ def test_motifs_writes_json_standard(robustbench_standard, tmp_path):
     proc = _run_gs(["motifs", str(robustbench_standard), "-o", str(out)])
     assert proc.returncode == 0, proc.stderr or proc.stdout
     data = json.loads(out.read_text())
-    assert data["overall_risk_score"] >= 0
+    findings = data.get("structural_findings") or data.get("vulnerabilities") or []
+    assert isinstance(findings, list)
+    assert "overall_risk_score" not in data
+    if findings:
+        assert "severity" not in findings[0]
+    titles = [f.get("title", "") for f in findings]
+    assert not any("Vulnerability" in t for t in titles)
+    registry_ids = [f.get("registry_id") for f in findings if f.get("registry_id")]
+    assert registry_ids, "expected at least one registry-backed finding on Standard"
+
+
+@pytest.mark.integration
+def test_patterns_output_uses_registry_ids(robustbench_standard):
+    proc = _run_gs(["patterns", str(robustbench_standard)])
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert "Vulnerability" not in proc.stdout
+    assert "NORMALIZER" in proc.stdout or "GAP_FC_HEAD" in proc.stdout
+
+
+@pytest.mark.integration
+def test_catalog_gadget_lookup():
+    proc = _run_gs(["catalog", "--gadget", "NORMALIZER"])
+    assert proc.returncode == 0
+    assert "Associated attack classes from literature:" in proc.stdout
+    assert "BNAttack-2020" in proc.stdout or "66-AdvShadow-2022" in proc.stdout

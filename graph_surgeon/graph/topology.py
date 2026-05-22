@@ -23,6 +23,24 @@ class GraphTopologyConfig:
     early_fraction: float = 0.20
     late_fraction: float = 0.80
 
+    def early_depth_threshold(self, max_depth: int) -> int:
+        """Maximum depth (inclusive) considered early in the network."""
+        if max_depth <= 0:
+            return 0
+        return int(max_depth * self.early_fraction)
+
+    def late_depth_threshold(self, max_depth: int) -> int:
+        """Minimum depth (inclusive) considered late in the network."""
+        if max_depth <= 0:
+            return 0
+        return int(max_depth * self.late_fraction)
+
+    def is_early(self, depth: int, max_depth: int) -> bool:
+        return depth <= self.early_depth_threshold(max_depth)
+
+    def is_late(self, depth: int, max_depth: int) -> bool:
+        return depth >= self.late_depth_threshold(max_depth)
+
     @property
     def early_threshold_expr(self):
         return self.early_fraction

@@ -5,9 +5,13 @@ from typing import List, Optional, Tuple
 
 try:
     import onnx
-    import onnxruntime as ort
+
+    from graph_surgeon._env import import_onnxruntime
+
+    ort = import_onnxruntime()
     ONNXRUNTIME_AVAILABLE = True
 except ImportError:
+    ort = None
     ONNXRUNTIME_AVAILABLE = False
 
 import numpy as np

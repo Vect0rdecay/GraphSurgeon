@@ -22,7 +22,9 @@ from datetime import datetime
 import logging
 
 try:
-    import onnxruntime as ort
+    from graph_surgeon._env import import_onnxruntime
+
+    ort = import_onnxruntime()
     HAS_ONNX = True
 except ImportError:
     HAS_ONNX = False
