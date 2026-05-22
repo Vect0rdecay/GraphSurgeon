@@ -393,7 +393,9 @@ def analyze_onnx_graph(filepath: str, output_path: str = None, verbose: bool = F
     report = analyzer.generate_report(
         model_name=filepath,
         nodes=node_profiles,
-        edges=edges
+        edges=edges,
+        num_graph_inputs=graph_info.get("num_inputs"),
+        graph_input_names=graph_info.get("input_names"),
     )
     
     if verbose:
@@ -434,6 +436,7 @@ def analyze_onnx_patterns(filepath: str):
         nodes=pattern_nodes,
         edges=edges,
         model_name=graph_info.get("name") or filepath,
+        num_graph_inputs=graph_info.get("num_inputs"),
     )
 
 

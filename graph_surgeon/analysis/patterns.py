@@ -370,8 +370,14 @@ class StructuralPatternAnalyzer:
             self.adjacency[src].append(dst)
             self.reverse_adjacency[dst].append(src)
     
-    def analyze(self, nodes: List[Dict], edges: List[Tuple[str, str]], 
-                model_name: str = "model") -> StructuralAnalysisReport:
+    def analyze(
+        self,
+        nodes: List[Dict],
+        edges: List[Tuple[str, str]],
+        model_name: str = "model",
+        *,
+        num_graph_inputs: Optional[int] = None,
+    ) -> StructuralAnalysisReport:
         """
         Perform complete structural analysis of the model.
         
@@ -415,6 +421,9 @@ class StructuralPatternAnalyzer:
         report.high_risk_patterns.extend(self._detect_early_linear_no_norm())
         report.high_risk_patterns.extend(self._detect_relu_no_lipschitz())
         report.high_risk_patterns.extend(self._detect_no_gradient_regularization())
+        report.high_risk_patterns.extend(
+            self._detect_deployment_context(num_graph_inputs=num_graph_inputs)
+        )
         
         # Detect robustness indicators
         report.robustness_indicators.extend(self._detect_early_downsampling())
@@ -1564,6 +1573,64 @@ class StructuralPatternAnalyzer:
                 ]
             ))
         
+        return patterns
+
+    def _detect_deployment_context(
+        self, *, num_graph_inputs: Optional[int] = None
+    ) -> List[StructuralPattern]:
+        """Deployment-context motifs via registry-backed pattern titles."""
+        patterns: List[StructuralPattern] = []
+        total = len(self.nodes)
+        if total == 0:
+            return patterns
+
+        early_limit = max(1, int(total * 0.15))
+        node_order = {nid: i for i, nid in enumerate(self.nodes)}
+        preprocess_ops = {
+            "Sub", "Div", "Mul", "Cast",
+            "BatchNormalization", "InstanceNormalization", "LayerNormalization",
+        }
+        preprocess_nodes = [
+            nid
+            for nid, n in self.nodes.items()
+            if n.get("op_type") in preprocess_ops
+            and node_order.get(nid, total) < early_limit
+        ]
+        if preprocess_nodes:
+            patterns.append(
+                self._pattern_from_registry(
+                    "IN_GRAPH_PREPROCESSING",
+                    "PATTERN-IN-GRAPH-PREPROCESSING",
+                    preprocess_nodes[:5],
+                    PatternCategory.FEATURE_EXTRACTION,
+                )
+            )
+
+        effective_inputs = num_graph_inputs
+        if effective_inputs is None:
+            roots = [nid for nid in self.nodes if not self.reverse_adjacency.get(nid)]
+            effective_inputs = max(1, len(roots))
+
+        fusion_nodes = [
+            nid
+            for nid, n in self.nodes.items()
+            if n.get("op_type") in self.MULTIMODAL_OPS
+            and len(self.reverse_adjacency.get(nid, [])) >= 2
+        ]
+        if effective_inputs == 1 and not fusion_nodes:
+            anchor = next(
+                (nid for nid, n in self.nodes.items() if n.get("op_type") == "Conv"),
+                "graph_input",
+            )
+            patterns.append(
+                self._pattern_from_registry(
+                    "SINGLE_MODALITY_INPUT",
+                    "PATTERN-SINGLE-MODALITY-INPUT",
+                    [anchor],
+                    PatternCategory.ATTACK_SURFACE,
+                )
+            )
+
         return patterns
     
     def _detect_relu_no_lipschitz(self) -> List[StructuralPattern]:

@@ -1115,32 +1115,10 @@ def get_technique_by_id(technique_id: str) -> Optional[AttackTechnique]:
 
 
 def print_taxonomy_summary():
-    """Print a summary of the threat taxonomy."""
-    all_techniques = get_all_techniques()
-    
-    print("=" * 60)
-    print("ADVERSARIAL ML THREAT TAXONOMY SUMMARY")
-    print("=" * 60)
-    print(f"\nTotal techniques catalogued: {len(all_techniques)}")
-    
-    # By category
-    categories = set(t.category for t in all_techniques)
-    print(f"\nCategories ({len(categories)}):")
-    for cat in sorted(categories):
-        count = len(get_techniques_by_category(cat))
-        print(f"  - {cat}: {count} techniques")
-    
-    # By access level
-    print(f"\nBy Access Level:")
-    for level in AccessLevel:
-        count = len(get_techniques_by_access_level(level))
-        print(f"  - {level.value}: {count} techniques")
-    
-    # By goal
-    print(f"\nBy Attack Goal:")
-    for goal in AttackGoal:
-        count = len(get_techniques_by_goal(goal))
-        print(f"  - {goal.value}: {count} techniques")
+    """Print RE-oriented catalog index: gadgets, chains, literature techniques."""
+    from graph_surgeon.taxonomy.motif_catalog import print_taxonomy_summary as _print_re_catalog
+
+    _print_re_catalog()
 
 
 if __name__ == "__main__":

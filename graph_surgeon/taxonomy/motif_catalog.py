@@ -1,10 +1,9 @@
 """
-Adversarial Machine Learning Threat Taxonomy
+Literature technique catalog for GraphSurgeon reverse engineering.
 
-Comprehensive catalog of adversarial ML attack types, techniques, and 
-vulnerability patterns for security research and model hardening.
-
-Based on MITRE ATLAS, academic literature, and real-world attack analysis.
+Reference attack classes from academic literature and MITRE ATLAS mapping.
+Structural motifs and compound chains live in gadget_registry; this module
+holds detailed technique write-ups for ``catalog --technique``.
 """
 
 from dataclasses import dataclass, field
@@ -1115,32 +1114,61 @@ def get_technique_by_id(technique_id: str) -> Optional[AttackTechnique]:
 
 
 def print_taxonomy_summary():
-    """Print a summary of the threat taxonomy."""
+    """Print RE-oriented catalog index: gadgets, chains, literature techniques."""
+    from graph_surgeon.taxonomy.gadget_registry import CHAIN_REGISTRY, GADGET_REGISTRY
+
+    width = 72
+    id_col = max(
+        (
+            max((len(gid) for gid in GADGET_REGISTRY), default=0),
+            max((len(cid) for cid in CHAIN_REGISTRY), default=0),
+        ),
+        default=32,
+    )
+
+    print("=" * width)
+    print("GRAPHSURGEON CATALOG")
+    print("ONNX reverse engineering: structural motifs, chains, literature index")
+    print("=" * width)
+    print(
+        "\nStructural motifs define attack landscape in the computation graph. "
+        "Detection means an attack class is architecturally enabled, not that "
+        "the model is exploitable."
+    )
+
+    print("\nStructural motifs (gadgets)")
+    print("  Use: graph-surgeon catalog --gadget <ID>\n")
+    for gid in sorted(GADGET_REGISTRY):
+        gadget = GADGET_REGISTRY[gid]
+        print(f"  {gid:<{id_col}}  {gadget.name}")
+
+    print("\nCompound chains")
+    print("  Use: graph-surgeon catalog --chain <ID>\n")
+    for cid in sorted(CHAIN_REGISTRY):
+        meta = CHAIN_REGISTRY[cid]
+        print(f"  {cid:<{id_col}}  {meta.get('name', '')}")
+
     all_techniques = get_all_techniques()
-    
-    print("=" * 60)
-    print("ADVERSARIAL ML THREAT TAXONOMY SUMMARY")
-    print("=" * 60)
-    print(f"\nTotal techniques catalogued: {len(all_techniques)}")
-    
-    # By category
-    categories = set(t.category for t in all_techniques)
-    print(f"\nCategories ({len(categories)}):")
-    for cat in sorted(categories):
-        count = len(get_techniques_by_category(cat))
-        print(f"  - {cat}: {count} techniques")
-    
-    # By access level
-    print(f"\nBy Access Level:")
-    for level in AccessLevel:
-        count = len(get_techniques_by_access_level(level))
-        print(f"  - {level.value}: {count} techniques")
-    
-    # By goal
-    print(f"\nBy Attack Goal:")
-    for goal in AttackGoal:
-        count = len(get_techniques_by_goal(goal))
-        print(f"  - {goal.value}: {count} techniques")
+    categories = sorted({t.category for t in all_techniques})
+
+    print("\nLiterature technique index")
+    print(
+        f"  {len(all_techniques)} reference classes from adversarial ML literature. "
+        "Not a threat taxonomy. Use: graph-surgeon catalog --technique <ID>\n"
+    )
+    for cat in categories:
+        techs = sorted(get_techniques_by_category(cat), key=lambda t: t.id)
+        print(f"  [{cat}]")
+        for technique in techs:
+            print(f"    {technique.id:<14} {technique.name}")
+        print()
+
+    print("-" * width)
+    print("Commands")
+    print("  graph-surgeon catalog --gadget GAP_FC_HEAD")
+    print("  graph-surgeon catalog --chain CHAIN-PATCH-ATTACK-SURFACE")
+    print("  graph-surgeon catalog --technique AML-ADV-001")
+    print("  graph-surgeon catalog --coverage")
 
 
 if __name__ == "__main__":

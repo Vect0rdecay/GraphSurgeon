@@ -1,0 +1,506 @@
+{
+  "100-ERAttack-2020": {
+    "attack_form": "Sticker",
+    "detection_status": "Covered by SHARED_BACKBONE",
+    "numeric_id": "100",
+    "short_name": "ER Attack",
+    "venue": "ArXiv",
+    "year": "2020"
+  },
+  "101-ScreenAttack-2020": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by SHARED_BACKBONE",
+    "numeric_id": "101",
+    "short_name": "ScreenAttack",
+    "venue": "ArXiv",
+    "year": "2020"
+  },
+  "102-PG(Poltergeist)-2021": {
+    "attack_form": "Acoustics",
+    "detection_status": "Covered by CHAIN-ACOUSTIC-COMMAND-SURFACE, audio motifs",
+    "numeric_id": "102",
+    "short_name": "PG (Poltergeist)",
+    "venue": "S&P",
+    "year": "2021"
+  },
+  "36-GoogleAp-2017": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by GAP_FC_HEAD",
+    "numeric_id": "36",
+    "short_name": "GoogleAp",
+    "venue": "NIPS",
+    "year": "2017"
+  },
+  "37-PAE-2018": {
+    "attack_form": "Printed images",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE",
+    "numeric_id": "37",
+    "short_name": "PAE",
+    "venue": "AISS",
+    "year": "2018"
+  },
+  "38-EOT(ExpectationOverTransformation)-2018": {
+    "attack_form": "3D-printed object",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE",
+    "numeric_id": "38",
+    "short_name": "EOT (Expectation Over Transformation)",
+    "venue": "PMLR",
+    "year": "2018"
+  },
+  "39-LaVAN-2018": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by GAP_FC_HEAD",
+    "numeric_id": "39",
+    "short_name": "LaVAN",
+    "venue": "ICML",
+    "year": "2018"
+  },
+  "40-LightAttack-2018": {
+    "attack_form": "Light based",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE + NORMALIZER",
+    "numeric_id": "40",
+    "short_name": "LightAttack",
+    "venue": "AAAI-S",
+    "year": "2018"
+  },
+  "41-D2P-2019": {
+    "attack_form": "Printed images",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE",
+    "numeric_id": "41",
+    "short_name": "D2P",
+    "venue": "AAAI",
+    "year": "2019"
+  },
+  "42-ACS-2019": {
+    "attack_form": "Sticker",
+    "detection_status": "Covered by GAP_FC_HEAD",
+    "numeric_id": "42",
+    "short_name": "ACS",
+    "venue": "PMLR",
+    "year": "2019"
+  },
+  "43-ProjectorAttack-2019": {
+    "attack_form": "Light based",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE + NORMALIZER",
+    "numeric_id": "43",
+    "short_name": "ProjectorAttack",
+    "venue": "S&P",
+    "year": "2019"
+  },
+  "44-AdversarialACO-2020": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by GAP_FC_HEAD",
+    "numeric_id": "44",
+    "short_name": "Adversarial ACO",
+    "venue": "ECCV",
+    "year": "2020"
+  },
+  "45-Adv-watermark-2020": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by GAP_FC_HEAD",
+    "numeric_id": "45",
+    "short_name": "Adv-watermark",
+    "venue": "ACM MM",
+    "year": "2020"
+  },
+  "46-ABBA-2020": {
+    "attack_form": "Printed image",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE",
+    "numeric_id": "46",
+    "short_name": "ABBA",
+    "venue": "NeurIPS",
+    "year": "2020"
+  },
+  "47-ViewFool-2020": {
+    "attack_form": "Position",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE",
+    "numeric_id": "47",
+    "short_name": "ViewFool",
+    "venue": "NeurIPS",
+    "year": "2020"
+  },
+  "48-SLMAttack-2021": {
+    "attack_form": "Light based",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE + NORMALIZER",
+    "numeric_id": "48",
+    "short_name": "SLMAttack",
+    "venue": "ArXiv",
+    "year": "2021"
+  },
+  "49-Meta-Attack-2021": {
+    "attack_form": "Image",
+    "detection_status": "Covered conceptually (exploits common gadgets)",
+    "numeric_id": "49",
+    "short_name": "Meta-Attack",
+    "venue": "ICCV",
+    "year": "2021"
+  },
+  "50-Invisibleperturbations-2021": {
+    "attack_form": "Camera",
+    "detection_status": "Covered by IN_GRAPH_PREPROCESSING + SINGLE_MODALITY_INPUT",
+    "numeric_id": "50",
+    "short_name": "Invisible perturbations",
+    "venue": "CVPR",
+    "year": "2021"
+  },
+  "51-AdversarialISP-2021": {
+    "attack_form": "Camera",
+    "detection_status": "Covered by IN_GRAPH_PREPROCESSING, CHAIN-PREPROCESSING-TRUST-BOUNDARY",
+    "numeric_id": "51",
+    "short_name": "Adversarial ISP",
+    "venue": "CVPR",
+    "year": "2021"
+  },
+  "52-AdvLB-2021": {
+    "attack_form": "Light based",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE + NORMALIZER",
+    "numeric_id": "52",
+    "short_name": "AdvLB",
+    "venue": "CVPR",
+    "year": "2021"
+  },
+  "54-TnTattack-2022": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by GAP_FC_HEAD",
+    "numeric_id": "54",
+    "short_name": "TnT attack",
+    "venue": "TIFS",
+    "year": "2022"
+  },
+  "56-AdvCF-2022": {
+    "attack_form": "Sticker",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE (weather)",
+    "numeric_id": "56",
+    "short_name": "AdvCF",
+    "venue": "Arxiv",
+    "year": "2022"
+  },
+  "57-SPAA-2022": {
+    "attack_form": "Light based",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE + NORMALIZER",
+    "numeric_id": "57",
+    "short_name": "SPAA",
+    "venue": "VR",
+    "year": "2022"
+  },
+  "58-FakeWeather-2022": {
+    "attack_form": "Sticker",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE (weather)",
+    "numeric_id": "58",
+    "short_name": "FakeWeather",
+    "venue": "IJCNN",
+    "year": "2022"
+  },
+  "59-AdvRain-2023": {
+    "attack_form": "Sticker",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE (weather)",
+    "numeric_id": "59",
+    "short_name": "AdvRain",
+    "venue": "Arxiv",
+    "year": "2023"
+  },
+  "60-RP2-2018": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE",
+    "numeric_id": "60",
+    "short_name": "RP2",
+    "venue": "CVPR",
+    "year": "2018"
+  },
+  "61-DARTS-2018": {
+    "attack_form": "Image",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE",
+    "numeric_id": "61",
+    "short_name": "DARTS",
+    "venue": "Arxiv",
+    "year": "2018"
+  },
+  "62-RogueSigns-2018": {
+    "attack_form": "Printed images",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE",
+    "numeric_id": "62",
+    "short_name": "RogueSigns",
+    "venue": "Arxiv",
+    "year": "2018"
+  },
+  "63-PS-GAN-2019": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE",
+    "numeric_id": "63",
+    "short_name": "PS-GAN",
+    "venue": "AAAI",
+    "year": "2019"
+  },
+  "64-AdvCam-2020": {
+    "attack_form": "Image",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE",
+    "numeric_id": "64",
+    "short_name": "AdvCam",
+    "venue": "CVPR",
+    "year": "2020"
+  },
+  "65-OPAD-2021": {
+    "attack_form": "Light based",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE + NORMALIZER",
+    "numeric_id": "65",
+    "short_name": "OPAD",
+    "venue": "ICCV",
+    "year": "2021"
+  },
+  "66-AdversarialShadow-2022": {
+    "attack_form": "Light based",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE + NORMALIZER",
+    "numeric_id": "66",
+    "short_name": "Adversarial Shadow",
+    "venue": "CVPR",
+    "year": "2022"
+  },
+  "67-PhysGAN-2020": {
+    "attack_form": "Image",
+    "detection_status": "Covered by MAXPOOL_AFTER_FUSION",
+    "numeric_id": "67",
+    "short_name": "PhysGAN",
+    "venue": "CVPR",
+    "year": "2020"
+  },
+  "70-TPatch-2023": {
+    "attack_form": "Acoustics",
+    "detection_status": "Covered by AUDIO_MEL_INPUT, CHAIN-AUDIO-ADVERSARIAL-SURFACE",
+    "numeric_id": "70",
+    "short_name": "TPatch",
+    "venue": "Arxiv",
+    "year": "2023"
+  },
+  "71-DPATCH-2019": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by OBJECTNESS_HEAD, FPN_STRUCTURE",
+    "numeric_id": "71",
+    "short_name": "DPATCH",
+    "venue": "AAAI",
+    "year": "2019"
+  },
+  "72-Dpatch2-2019": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "72",
+    "short_name": "Dpatch2",
+    "venue": "ArXiv",
+    "year": "2019"
+  },
+  "73-ObjectHider-2020": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "73",
+    "short_name": "Object Hider",
+    "venue": "ArXiv",
+    "year": "2020"
+  },
+  "74-LPAttack-2020": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "74",
+    "short_name": "LPAttack",
+    "venue": "AAAI",
+    "year": "2020"
+  },
+  "75-SwitchPatch-2022": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "75",
+    "short_name": "SwitchPatch",
+    "venue": "ArXiv",
+    "year": "2022"
+  },
+  "76-ExtendedRP2-2018": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE",
+    "numeric_id": "76",
+    "short_name": "Extended RP2",
+    "venue": "USENIX",
+    "year": "2018"
+  },
+  "77-ShapeShifter-2018": {
+    "attack_form": "Image",
+    "detection_status": "Covered by TWO_STAGE_RPN",
+    "numeric_id": "77",
+    "short_name": "ShapeShifter",
+    "venue": "ECML PKDD",
+    "year": "2018"
+  },
+  "78-NestedAE-2019": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by NMS_DEPENDENCY",
+    "numeric_id": "78",
+    "short_name": "NestedAE",
+    "venue": "CCS",
+    "year": "2019"
+  },
+  "79-TranslucentPatch-2021": {
+    "attack_form": "Sticker",
+    "detection_status": "Covered by NMS_DEPENDENCY",
+    "numeric_id": "79",
+    "short_name": "Translucent Patch",
+    "venue": "CVPR",
+    "year": "2021"
+  },
+  "80-SLAP-2021": {
+    "attack_form": "Light based",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE + NORMALIZER",
+    "numeric_id": "80",
+    "short_name": "SLAP",
+    "venue": "USENIX",
+    "year": "2021"
+  },
+  "81-AdversarialRain-2022": {
+    "attack_form": "Sticker",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE + NORMALIZER",
+    "numeric_id": "81",
+    "short_name": "Adversarial Rain",
+    "venue": "Arxiv",
+    "year": "2022"
+  },
+  "82-AdvRD-2023": {
+    "attack_form": "Sticker",
+    "detection_status": "Covered by ALIASING_DOWNSAMPLE + NORMALIZER",
+    "numeric_id": "82",
+    "short_name": "AdvRD",
+    "venue": "Arxiv",
+    "year": "2023"
+  },
+  "83-InvisibleCloak-2018": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by HIGH_FANIN_FUSION",
+    "numeric_id": "83",
+    "short_name": "Invisible Cloak",
+    "venue": "UEMCON",
+    "year": "2018"
+  },
+  "84-AdversarialYOLO-2019": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "84",
+    "short_name": "Adversarial YOLO",
+    "venue": "CVPR",
+    "year": "2019"
+  },
+  "85-UPC-2020": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by OBJECTNESS_HEAD + ALIASING",
+    "numeric_id": "85",
+    "short_name": "UPC",
+    "venue": "CVPR",
+    "year": "2020"
+  },
+  "86-AdversarialT-shirt-2020": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "86",
+    "short_name": "Adversarial T-shirt",
+    "venue": "ECCV",
+    "year": "2020"
+  },
+  "87-InvisibleCloak2-2020": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "87",
+    "short_name": "Invisible Cloak2",
+    "venue": "ECCV",
+    "year": "2020"
+  },
+  "88-NAP-2021": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "88",
+    "short_name": "NAP",
+    "venue": "ICCV",
+    "year": "2021"
+  },
+  "89-LAP-2021": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "89",
+    "short_name": "LAP",
+    "venue": "ACM MM",
+    "year": "2021"
+  },
+  "90-AdvTexture-2022": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "90",
+    "short_name": "AdvTexture",
+    "venue": "CVPR",
+    "year": "2022"
+  },
+  "91-AdvART-2023": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "91",
+    "short_name": "AdvART",
+    "venue": "ArXiv",
+    "year": "2023"
+  },
+  "92-PatchofInvisibility-2023": {
+    "attack_form": "Patch",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "92",
+    "short_name": "Patch of Invisibility",
+    "venue": "ArXiv",
+    "year": "2023"
+  },
+  "93-DAP-2023": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by OBJECTNESS_HEAD",
+    "numeric_id": "93",
+    "short_name": "DAP",
+    "venue": "ArXiv",
+    "year": "2023"
+  },
+  "94-AdversarialBulbs-2021": {
+    "attack_form": "Bulb",
+    "detection_status": "Covered by SINGLE_MODALITY_INPUT, CHAIN-SINGLE-MODALITY-VISION",
+    "numeric_id": "94",
+    "short_name": "Adversarial Bulbs",
+    "venue": "AAAI",
+    "year": "2021"
+  },
+  "95-QRAttack-2022": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by SINGLE_MODALITY_INPUT, CHAIN-SINGLE-MODALITY-VISION",
+    "numeric_id": "95",
+    "short_name": "QRAttack",
+    "venue": "CVPR",
+    "year": "2022"
+  },
+  "96-HOTCOLD-2022": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by SINGLE_MODALITY_INPUT, CHAIN-SINGLE-MODALITY-VISION",
+    "numeric_id": "96",
+    "short_name": "HOTCOLD",
+    "venue": "ArXiv",
+    "year": "2022"
+  },
+  "97-AIP-2023": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by SINGLE_MODALITY_INPUT, CHAIN-SINGLE-MODALITY-VISION",
+    "numeric_id": "97",
+    "short_name": "AIP",
+    "venue": "ArXiv",
+    "year": "2023"
+  },
+  "98-AdvIB-2023": {
+    "attack_form": "Clothing",
+    "detection_status": "Covered by SINGLE_MODALITY_INPUT, CHAIN-SINGLE-MODALITY-VISION",
+    "numeric_id": "98",
+    "short_name": "AdvIB",
+    "venue": "ArXiv",
+    "year": "2023"
+  },
+  "99-CAMOU-2019": {
+    "attack_form": "Sticker",
+    "detection_status": "Covered by OBJECTNESS_HEAD + ALIASING",
+    "numeric_id": "99",
+    "short_name": "CAMOU",
+    "venue": "ICLR",
+    "year": "2019"
+  }
+}

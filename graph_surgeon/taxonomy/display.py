@@ -194,6 +194,55 @@ def format_pattern_from_registry(
     }
 
 
+def _format_gadget_catalog_section(gadget_id: str, *, indent: str = "") -> List[str]:
+    """Detailed gadget block for catalog output."""
+    from graph_surgeon.taxonomy.paper_research import format_paper_catalog_block
+
+    info = get_gadget_info(gadget_id)
+    if not info:
+        return [f"{indent}Unknown gadget: {gadget_id}"]
+
+    prefix = indent
+    lines = [
+        f"{prefix}## {gadget_id} — {info.name}",
+        f"{prefix}Category: {info.category.value}",
+        f"{prefix}Status: {info.status.value} | Confidence: {info.confidence} | Version: {info.version}",
+        "",
+        f"{prefix}Structural motif:",
+        _indent_block(info.description.strip(), prefix + "  "),
+        "",
+        f"{prefix}Graph detection logic:",
+        _indent_block(info.detection_logic.strip(), prefix + "  "),
+        "",
+        f"{prefix}Associated attack classes from literature:",
+        _indent_block(", ".join(info.attacks_enabled), prefix + "  "),
+    ]
+    if info.chainable_with:
+        lines.extend([
+            "",
+            f"{prefix}Often chains with:",
+            _indent_block(", ".join(info.chainable_with), prefix + "  "),
+        ])
+    if info.notes:
+        lines.extend([
+            "",
+            f"{prefix}Research notes:",
+            _indent_block(info.notes.strip(), prefix + "  "),
+        ])
+    lines.extend(["", f"{prefix}Research basis (papers):"])
+    for slug in info.research_basis:
+        lines.append("")
+        lines.append(_indent_block(format_paper_catalog_block(slug), prefix))
+
+    lines.append("")
+    lines.append(f"{prefix}Lookup: graph-surgeon catalog --gadget {gadget_id}")
+    return lines
+
+
+def _indent_block(text: str, prefix: str) -> str:
+    return "\n".join(prefix + line for line in text.splitlines())
+
+
 def format_catalog_gadget(gadget_id: str) -> str:
     """Full catalog text for graph-surgeon catalog --gadget."""
     info = get_gadget_info(gadget_id)
@@ -201,40 +250,114 @@ def format_catalog_gadget(gadget_id: str) -> str:
         return f"Unknown gadget: {gadget_id}"
 
     lines = [
-        f"{gadget_id} — {info.name}",
-        f"Category: {info.category.value}",
+        format_gadget_title(gadget_id),
+        "=" * 72,
         "",
-        f"Structural motif: {info.description.strip()}",
+        "This entry describes a structural motif indexed to adversarial ML literature.",
+        "Presence in a graph indicates applicable attack classes, not confirmed exploitability.",
         "",
-        f"Detection: {info.detection_logic.strip()}",
-        "",
-        f"Associated attack classes from literature: {', '.join(info.attacks_enabled)}",
-        "",
-        f"Research basis: {', '.join(info.research_basis)}",
-        "",
-        f"Status: {info.status.value} | Confidence: {info.confidence}",
     ]
-    if info.chainable_with:
-        lines.append(f"Chainable with: {', '.join(info.chainable_with)}")
-    if info.notes:
-        lines.append(f"Notes: {info.notes.strip()}")
+    lines.extend(_format_gadget_catalog_section(gadget_id))
     return "\n".join(lines)
 
 
 def format_catalog_chain(chain_id: str) -> str:
     """Full catalog text for graph-surgeon catalog --chain."""
+    from graph_surgeon.taxonomy.chain_catalog import CHAIN_DETECTION_RATIONALE, CHAIN_NARRATIVES
+    from graph_surgeon.taxonomy.paper_research import extract_chain_rationale, format_paper_catalog_block
+
     chain = get_chain_info(chain_id)
     if not chain:
         return f"Unknown chain: {chain_id}"
 
     lines = [
         format_chain_title(chain_id),
+        "=" * 72,
         "",
-        format_chain_description(chain_id),
+        "Compound structural motif chain indexed to AML research.",
+        "The chain describes attack landscape when all required motifs are present in the ONNX DAG.",
+        "",
     ]
-    if chain.get("notes"):
+
+    narrative = CHAIN_NARRATIVES.get(chain_id)
+    if narrative:
+        lines.extend(["## What this chain means", narrative, ""])
+
+    registry_notes = chain.get("notes")
+    if registry_notes:
+        lines.extend(["## Registry notes", registry_notes.strip(), ""])
+
+    lines.append("## Graph composition")
+    required = chain.get("required_gadgets", [])
+    optional = chain.get("optional_gadgets", [])
+    if required:
+        lines.append(f"Required motifs: {', '.join(required)}")
+    if optional:
+        lines.append(f"Optional motifs: {', '.join(optional)}")
+    if chain.get("logic"):
+        lines.append(f"Composition logic: {chain['logic']}")
+    if chain.get("min_count") is not None:
+        lines.append(f"Minimum count: {chain['min_count']}")
+    if chain.get("min_counts"):
+        lines.append(f"Minimum counts: {chain['min_counts']}")
+    if chain.get("min_optional") is not None:
+        lines.append(f"Minimum optional motifs: {chain['min_optional']}")
+
+    modifiers = chain.get("severity_modifiers", {})
+    if modifiers:
         lines.append("")
-        lines.append(chain["notes"].strip())
+        lines.append("Modifier motifs (change the attack landscape when also detected):")
+        for mod_id, effect in modifiers.items():
+            lines.append(f"  - {mod_id}: {effect}")
+
+    lines.append("")
+    lines.append(f"Chain version: {chain.get('version', 'unknown')}")
+
+    # Required and optional gadget detail
+    all_gadgets = list(dict.fromkeys(required + optional + list(modifiers.keys())))
+    if all_gadgets:
+        lines.extend(["", "## Motif details"])
+        for gid in all_gadgets:
+            if gid in GADGET_REGISTRY:
+                lines.append("")
+                lines.extend(_format_gadget_catalog_section(gid))
+
+    # Aggregated attack classes
+    attack_classes: List[str] = []
+    for gid in all_gadgets:
+        g = get_gadget_info(gid)
+        if g:
+            for a in g.attacks_enabled:
+                if a not in attack_classes:
+                    attack_classes.append(a)
+    if attack_classes:
+        lines.extend([
+            "",
+            "## Aggregated attack classes from literature",
+            ", ".join(attack_classes),
+        ])
+
+    # Detection rationale
+    rationale = CHAIN_DETECTION_RATIONALE.get(chain_id) or extract_chain_rationale(chain_id)
+    if rationale:
+        lines.extend(["", "## Detection rationale", rationale])
+
+    # Papers
+    research = chain.get("research_basis", [])
+    if research:
+        lines.extend(["", "## Research basis (papers)"])
+        for slug in research:
+            lines.append("")
+            lines.append(format_paper_catalog_block(slug))
+
+    lines.extend([
+        "",
+        "## Related lookups",
+    ])
+    for gid in required:
+        lines.append(f"  graph-surgeon catalog --gadget {gid}")
+    lines.append(f"  graph-surgeon catalog --chain {chain_id}")
+
     return "\n".join(lines)
 
 

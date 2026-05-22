@@ -19,7 +19,9 @@ FIXTURE_ROOT = Path(
     )
 )
 
-GS_BIN = Path(__file__).resolve().parent.parent / ".venv" / "bin" / "graph-surgeon"
+ROOT = Path(__file__).resolve().parent.parent
+VENV_PYTHON = ROOT / ".venv" / "bin" / "python"
+GS_BIN = ROOT / ".venv" / "bin" / "graph-surgeon"
 
 
 def _model_names() -> list[str]:
@@ -42,11 +44,14 @@ def _require_fixture(model_file: str) -> Path:
 
 
 def _run_gs(args: list[str]) -> subprocess.CompletedProcess:
+    if not VENV_PYTHON.is_file():
+        pytest.skip("Project venv not found; run pip install -e .")
     return subprocess.run(
-        [str(GS_BIN), *args],
+        [str(VENV_PYTHON), "-m", "graph_surgeon", *args],
         capture_output=True,
         text=True,
         check=False,
+        cwd=str(ROOT),
     )
 
 

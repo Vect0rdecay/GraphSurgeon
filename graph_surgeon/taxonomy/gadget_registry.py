@@ -49,6 +49,7 @@ class GadgetCategory(Enum):
     BACKDOOR = "backdoor"
     SUPPLY_CHAIN = "supply_chain"
     INFORMATION_LEAKAGE = "information_leakage"
+    DEPLOYMENT_CONTEXT = "deployment_context"
 
 
 @dataclass
@@ -1246,7 +1247,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         severity_base="MEDIUM",
         version="1.0.0",
         changelog=["1.0.0 (2026-01-20): Initial implementation"],
-        chainable_with=["PERTURBATION_CARRIER", "AMPLIFIER"],
+        chainable_with=["AMPLIFIER", "NORMALIZER"],
         notes="Quantized models have fundamentally different error surfaces than FP32 models. "
               "Integer quantization creates step functions that adversarial perturbations can exploit."
     ),
@@ -1276,6 +1277,217 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
         chainable_with=["SHARED_BACKBONE"],
         notes="Voxel encoding is domain-specific (autonomous driving, robotics). "
               "Detection may require custom op identification."
+    ),
+
+    # =========================================================================
+    # DEPLOYMENT CONTEXT (graph-visible deployment signals)
+    # =========================================================================
+
+    "SINGLE_MODALITY_INPUT": GadgetDefinition(
+        id="SINGLE_MODALITY_INPUT",
+        name="Single Modality Graph Input",
+        category=GadgetCategory.DEPLOYMENT_CONTEXT,
+        description="One primary input tensor in the exported ONNX graph with no early "
+                   "multimodal fusion before the backbone. The DAG is a standard vision "
+                   "(or single-stream) classifier even when deployment may use thermal, IR, "
+                   "or another sensor not represented in the file.",
+        detection_logic="graph.input count == 1; no MULTIMODAL_FUSION_POINT or "
+                       "DUAL_ENCODER_ALIGNMENT from separate inputs in early network.",
+        research_basis=[
+            "94-AdversarialBulbs-2021",
+            "95-QRAttack-2022",
+            "96-HOTCOLD-2022",
+            "97-AIP-2023",
+            "98-AdvIB-2023",
+        ],
+        first_documented="2021",
+        last_validated="2023",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=[
+            "thermal_domain_mismatch",
+            "cross_sensor_transfer",
+            "visible_trained_nonvisible_deploy",
+        ],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-05-22): Deployment-context motif for thermal papers"],
+        chainable_with=["GAP_FC_HEAD", "ALIASING_DOWNSAMPLE", "IN_GRAPH_PREPROCESSING"],
+        notes="Attack channel may be hardware (thermal LED, clothing); graph still indexes "
+              "standard CNN/ViT attack landscape. Record deployment sensors separately.",
+    ),
+
+    "IN_GRAPH_PREPROCESSING": GadgetDefinition(
+        id="IN_GRAPH_PREPROCESSING",
+        name="In-Graph Input Preprocessing",
+        category=GadgetCategory.DEPLOYMENT_CONTEXT,
+        description="Normalize, scale, or color transforms in the first ~15% of hops from "
+                   "the graph input. Trust boundary for pixel statistics sits inside ONNX "
+                   "(distinct from off-graph ISP or camera pipeline).",
+        detection_logic="Early Sub/Div/Mul with constants, InstanceNormalization or "
+                       "BatchNormalization at stem, or Cast plus scale before first Conv.",
+        research_basis=[
+            "50-Invisibleperturbations-2021",
+            "51-AdversarialISP-2021",
+        ],
+        first_documented="2021",
+        last_validated="2021",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=[
+            "preprocessing_trust_boundary",
+            "distribution_shift",
+            "isp_pipeline_mismatch",
+        ],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-05-22): In-graph vs off-graph preprocessing signal"],
+        chainable_with=["NORMALIZER", "SHAPE_OP", "SINGLE_MODALITY_INPUT"],
+        notes="Paper 51 applies when preprocessing is exported; off-graph ISP is a static limit.",
+    ),
+
+    "HAS_MULTIMODAL_FUSION": GadgetDefinition(
+        id="HAS_MULTIMODAL_FUSION",
+        name="Multimodal Fusion Present",
+        category=GadgetCategory.DEPLOYMENT_CONTEXT,
+        description="Multimodal fusion or dual-encoder alignment detected in the DAG. "
+                   "Indicates multiple modality streams merge in-graph (thermal/single-modality "
+                   "mismatch from graph alone is less likely).",
+        detection_logic="MULTIMODAL_FUSION_POINT or DUAL_ENCODER_ALIGNMENT from motifs scan.",
+        research_basis=[
+            "CLIP-Architecture-2021",
+            "BATCH_7_ANALYSIS",
+        ],
+        first_documented="2021",
+        last_validated="2026",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["cross_modal_injection", "modality_hijack", "late_fusion_exploit"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-05-22): Companion to SINGLE_MODALITY_INPUT"],
+        chainable_with=["MULTIMODAL_FUSION_POINT", "DUAL_ENCODER_ALIGNMENT"],
+    ),
+
+    "AUDIO_MEL_INPUT": GadgetDefinition(
+        id="AUDIO_MEL_INPUT",
+        name="Mel-Spectrogram Input Surface",
+        category=GadgetCategory.INPUT_PREPROCESSING,
+        description="Audio frontend expecting mel-spectrogram or log-mel bins (typical 80-128 "
+                   "frequency bins). Indexes psychoacoustic and frequency-domain audio attacks.",
+        detection_logic="Early Conv/MatMul on 1D or 2D tensors with mel-like channel counts; "
+                       "Whisper-style log-mel stem patterns.",
+        research_basis=[
+            "Carlini-Audio-2018",
+            "70-TPatch-2023",
+            "102-PG(Poltergeist)-2021",
+        ],
+        first_documented="2018",
+        last_validated="2023",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["audio_adversarial", "psychoacoustic_masking", "frequency_attacks"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-05-22): Registered audio motif from motifs detector"],
+        chainable_with=["AUDIO_STRIDE_DOWNSAMPLE", "AUDIO_1D_CONV", "CTC_DECODER_STRUCTURE"],
+    ),
+
+    "AUDIO_1D_CONV": GadgetDefinition(
+        id="AUDIO_1D_CONV",
+        name="Audio 1D Convolution Frontend",
+        category=GadgetCategory.INPUT_PREPROCESSING,
+        description="1D convolution stack for temporal audio feature extraction.",
+        detection_logic="Conv1d or Conv with 1D-like kernel on temporal audio tensors.",
+        research_basis=["Carlini-Audio-2018", "70-TPatch-2023"],
+        first_documented="2018",
+        last_validated="2023",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["audio_adversarial", "temporal_perturbation"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-05-22): Registered from motifs audio scan"],
+        chainable_with=["AUDIO_MEL_INPUT", "AUDIO_STRIDE_DOWNSAMPLE"],
+    ),
+
+    "AUDIO_STRIDE_DOWNSAMPLE": GadgetDefinition(
+        id="AUDIO_STRIDE_DOWNSAMPLE",
+        name="Audio Stride Downsampling",
+        category=GadgetCategory.DOWNSAMPLING,
+        description="Strided 1D conv or pool in audio frontend; aliasing-like folding on "
+                   "spectral/temporal axes.",
+        detection_logic="Stride > 1 in early audio Conv or pooling along time/frequency axis.",
+        research_basis=["Carlini-Audio-2018", "70-TPatch-2023"],
+        first_documented="2018",
+        last_validated="2023",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["audio_aliasing", "robust_audio_attacks", "audio_adversarial"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-05-22): Registered from motifs audio scan"],
+        chainable_with=["AUDIO_MEL_INPUT", "AUDIO_1D_CONV"],
+    ),
+
+    "AUDIO_TEMPORAL_ATTENTION": GadgetDefinition(
+        id="AUDIO_TEMPORAL_ATTENTION",
+        name="Audio Temporal Attention",
+        category=GadgetCategory.ATTENTION,
+        description="Self-attention over audio time steps; temporal hijacking surface.",
+        detection_logic="MatMul/Softmax attention patterns on audio sequence length.",
+        research_basis=["Carlini-Audio-2018", "Whisper-Architecture-Analysis"],
+        first_documented="2018",
+        last_validated="2023",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["audio_adversarial", "attention_hijacking", "temporal_perturbation"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-05-22): Registered from motifs audio scan"],
+        chainable_with=["AUDIO_MEL_INPUT", "CROSS_MODAL_ATTENTION"],
+    ),
+
+    "CROSS_MODAL_ATTENTION": GadgetDefinition(
+        id="CROSS_MODAL_ATTENTION",
+        name="Cross-Modal Attention",
+        category=GadgetCategory.ATTENTION,
+        description="Encoder-decoder or cross-attention between modalities (audio-text, image-text).",
+        detection_logic="Cross-attention MatMul patterns between encoder and decoder branches.",
+        research_basis=[
+            "Whisper-Architecture-Analysis",
+            "102-PG(Poltergeist)-2021",
+        ],
+        first_documented="2023",
+        last_validated="2023",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["cross_modal_injection", "audio_text_hijacking", "hidden_command_injection"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-05-22): Registered from motifs audio/ASR scan"],
+        chainable_with=["ENCODER_DECODER_SEQ2SEQ", "SPECIAL_TOKEN_CONTROL_FLOW"],
+    ),
+
+    "ENCODER_DECODER_SEQ2SEQ": GadgetDefinition(
+        id="ENCODER_DECODER_SEQ2SEQ",
+        name="Encoder-Decoder Seq2Seq",
+        category=GadgetCategory.FEATURE_FUSION,
+        description="Separate encoder and autoregressive decoder subgraphs (ASR, speech translation).",
+        detection_logic="Distinct encoder stack feeding decoder via cross-attention or state.",
+        research_basis=[
+            "Whisper-Architecture-Analysis",
+            "102-PG(Poltergeist)-2021",
+        ],
+        first_documented="2023",
+        last_validated="2023",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["seq2seq_backdoor", "cross_modal_injection", "forced_transcription"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-05-22): Registered from motifs ASR scan"],
+        chainable_with=["CTC_DECODER_STRUCTURE", "SPECIAL_TOKEN_CONTROL_FLOW", "AUDIO_MEL_INPUT"],
     ),
 }
 
@@ -1379,6 +1591,66 @@ CHAIN_REGISTRY: Dict[str, Dict[str, Any]] = {
         "version": "1.0.0",
         "notes": "Model is vulnerable to ShadowLogic injection attacks. Attacker with "
                  "file access could embed persistent backdoors.",
+    },
+
+    "CHAIN-SINGLE-MODALITY-VISION": {
+        "name": "Single-Modality Vision Deployment Mismatch",
+        "required_gadgets": ["SINGLE_MODALITY_INPUT"],
+        "optional_gadgets": ["GAP_FC_HEAD", "OBJECTNESS_HEAD", "DETECTION_HEAD_PATTERN"],
+        "min_optional": 1,
+        "research_basis": [
+            "94-AdversarialBulbs-2021",
+            "95-QRAttack-2022",
+            "96-HOTCOLD-2022",
+            "97-AIP-2023",
+            "98-AdvIB-2023",
+        ],
+        "version": "1.0.0",
+        "notes": "Visible-trained vision graph with classifier head; thermal/IR deployment "
+                 "is an external channel not shown in ONNX.",
+    },
+
+    "CHAIN-PREPROCESSING-TRUST-BOUNDARY": {
+        "name": "In-Graph Preprocessing Trust Boundary",
+        "required_gadgets": ["IN_GRAPH_PREPROCESSING"],
+        "research_basis": [
+            "50-Invisibleperturbations-2021",
+            "51-AdversarialISP-2021",
+        ],
+        "version": "1.0.0",
+        "notes": "Preprocessing inside ONNX vs off-graph ISP/camera pipeline.",
+    },
+
+    "CHAIN-AUDIO-ADVERSARIAL-SURFACE": {
+        "name": "Audio Adversarial Surface",
+        "required_gadgets": ["AUDIO_MEL_INPUT"],
+        "optional_gadgets": ["AUDIO_STRIDE_DOWNSAMPLE", "AUDIO_1D_CONV"],
+        "min_optional": 1,
+        "research_basis": [
+            "Carlini-Audio-2018",
+            "70-TPatch-2023",
+        ],
+        "version": "1.0.0",
+    },
+
+    "CHAIN-ACOUSTIC-COMMAND-SURFACE": {
+        "name": "Acoustic Command Injection Surface",
+        "required_gadgets": [],
+        "optional_gadgets": [
+            "AUDIO_MEL_INPUT",
+            "ENCODER_DECODER_SEQ2SEQ",
+            "CTC_DECODER_STRUCTURE",
+            "SPECIAL_TOKEN_CONTROL_FLOW",
+        ],
+        "min_optional": 2,
+        "logic": "AUDIO_MEL_INPUT or ENCODER_DECODER_SEQ2SEQ plus "
+                 "(CTC_DECODER_STRUCTURE or SPECIAL_TOKEN_CONTROL_FLOW)",
+        "research_basis": [
+            "102-PG(Poltergeist)-2021",
+            "Carlini-Audio-2018",
+        ],
+        "version": "1.0.0",
+        "notes": "ASR/command graphs: hidden acoustic commands when mel + decoder motifs align.",
     },
 }
 

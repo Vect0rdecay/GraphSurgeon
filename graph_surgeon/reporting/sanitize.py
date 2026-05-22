@@ -27,6 +27,11 @@ _FINDING_RATING_FIELDS = frozenset({
     "exploitation_difficulty",
 })
 
+# Internal chain registry metadata not shown in export.
+_CHAIN_INTERNAL_FIELDS = frozenset({
+    "severity_modifiers",
+})
+
 # Narrative sections that frame security posture rather than structure.
 _NARRATIVE_RATING_FIELDS = frozenset({
     "executive_summary",
@@ -70,7 +75,7 @@ def _sanitize_dict(data: dict) -> dict:
     for key, value in data.items():
         if key in _SCORE_FIELDS or key in _NARRATIVE_RATING_FIELDS:
             continue
-        if key in _FINDING_RATING_FIELDS:
+        if key in _FINDING_RATING_FIELDS or key in _CHAIN_INTERNAL_FIELDS:
             continue
         if key == "shadowlogic_assessment" and isinstance(value, dict):
             out[key] = {

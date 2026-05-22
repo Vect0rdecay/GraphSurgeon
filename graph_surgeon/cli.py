@@ -10,74 +10,375 @@ import json
 import os
 import sys
 
+_FORMATTER = argparse.RawDescriptionHelpFormatter
+
+_TOP_LEVEL_EPILOG = """
+Examples:
+  graph-surgeon inspect model.onnx
+  graph-surgeon topology model.onnx --json
+  graph-surgeon motifs model.onnx -o motifs.json
+  graph-surgeon patterns model.onnx
+  graph-surgeon flow model.onnx
+  graph-surgeon catalog --gadget GAP_FC_HEAD
+  graph-surgeon catalog --chain CHAIN-PATCH-ATTACK-SURFACE
+  graph-surgeon catalog --coverage
+  graph-surgeon operators --op Conv
+  graph-surgeon edit validate edited.onnx --level runnable
+  graph-surgeon edit remove-node model.onnx Conv_42 -o edited.onnx
+  graph-surgeon diff baseline.onnx edited.onnx
+"""
+
+_INSPECT_EPILOG = """
+Examples:
+  graph-surgeon inspect model.onnx
+  graph-surgeon inspect /path/to/resnet50.onnx
+"""
+
+_TOPOLOGY_EPILOG = """
+Examples:
+  graph-surgeon topology model.onnx
+  graph-surgeon topology model.onnx --json
+"""
+
+_MOTIFS_EPILOG = """
+Examples:
+  graph-surgeon motifs model.onnx
+  graph-surgeon motifs model.onnx -o report.json
+  graph-surgeon motifs model.onnx --flow
+"""
+
+_PATTERNS_EPILOG = """
+Examples:
+  graph-surgeon patterns model.onnx
+  graph-surgeon patterns model.onnx --json
+  graph-surgeon patterns model.onnx -o structural_report.txt
+"""
+
+_FLOW_EPILOG = """
+Examples:
+  graph-surgeon flow model.onnx
+"""
+
+_CATALOG_EPILOG = """
+Examples:
+  graph-surgeon catalog
+  graph-surgeon catalog --gadget GAP_FC_HEAD
+  graph-surgeon catalog --chain CHAIN-PATCH-ATTACK-SURFACE
+  graph-surgeon catalog --coverage
+  graph-surgeon catalog --category "Adversarial Examples"
+  graph-surgeon catalog --technique AML-ADV-001
+"""
+
+_OPERATORS_EPILOG = """
+Examples:
+  graph-surgeon operators
+  graph-surgeon operators --op Conv
+  graph-surgeon operators --op Softmax
+"""
+
+_EDIT_EPILOG = """
+Examples:
+  graph-surgeon edit validate edited.onnx
+  graph-surgeon edit validate edited.onnx --level runnable
+  graph-surgeon edit remove-node model.onnx Conv_42 -o edited.onnx
+"""
+
+_EDIT_VALIDATE_EPILOG = """
+Examples:
+  graph-surgeon edit validate edited.onnx
+  graph-surgeon edit validate edited.onnx --level loadable
+  graph-surgeon edit validate edited.onnx --level runnable
+"""
+
+_EDIT_REMOVE_EPILOG = """
+Examples:
+  graph-surgeon edit remove-node model.onnx Conv_42 -o edited.onnx
+  graph-surgeon edit remove-node baseline.onnx /model/head/Gemm -o head_removed.onnx
+"""
+
+_DIFF_EPILOG = """
+Examples:
+  graph-surgeon diff baseline.onnx edited.onnx
+  graph-surgeon diff original.onnx counterfactual.onnx
+"""
+
+
+def _subparser(sub, name, *, help_text, description, epilog=""):
+    return sub.add_parser(
+        name,
+        help=help_text,
+        description=description,
+        formatter_class=_FORMATTER,
+        epilog=epilog,
+    )
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="graph-surgeon",
-        description="Inspect, map, and experiment on ONNX computational DAGs",
+        description=(
+            "Inspect, map, and experiment on ONNX computational DAGs.\n"
+            "Structural motifs describe attack landscape (what attack classes are "
+            "architecturally plausible), not confirmed exploitability."
+        ),
+        formatter_class=_FORMATTER,
+        epilog=_TOP_LEVEL_EPILOG,
     )
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(
+        dest="command",
+        required=True,
+        title="subcommands",
+        metavar="{inspect,topology,motifs,patterns,flow,catalog,operators,edit,diff}",
+    )
 
     # inspect
-    p_inspect = sub.add_parser("inspect", help="Model summary: I/O, op counts")
-    p_inspect.add_argument("model")
+    p_inspect = _subparser(
+        sub,
+        "inspect",
+        help_text="Model summary: inputs, outputs, op counts",
+        description="Print a quick summary of an ONNX graph.",
+        epilog=_INSPECT_EPILOG,
+    )
+    p_inspect.add_argument(
+        "model",
+        metavar="MODEL.onnx",
+        help="Path to the ONNX model file (required)",
+    )
     p_inspect.set_defaults(func=cmd_inspect)
 
     # topology
-    p_topo = sub.add_parser("topology", help="Depth, early/middle/late, execution order")
-    p_topo.add_argument("model")
-    p_topo.add_argument("--json", action="store_true")
+    p_topo = _subparser(
+        sub,
+        "topology",
+        help_text="Depth, early/middle/late layers, execution order",
+        description="Map graph depth and layer position (early stem, middle, late head).",
+        epilog=_TOPOLOGY_EPILOG,
+    )
+    p_topo.add_argument(
+        "model",
+        metavar="MODEL.onnx",
+        help="Path to the ONNX model file (required)",
+    )
+    p_topo.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit full topology report as JSON on stdout",
+    )
     p_topo.set_defaults(func=cmd_topology)
 
     # motifs
-    p_motifs = sub.add_parser("motifs", help="Structural motif scan")
-    p_motifs.add_argument("model")
-    p_motifs.add_argument("-o", "--output", help="JSON output path")
-    p_motifs.add_argument("--flow", action="store_true")
+    p_motifs = _subparser(
+        sub,
+        "motifs",
+        help_text="Scan for structural motifs (attack landscape)",
+        description=(
+            "Run structural motif detection and print findings. "
+            "Motifs index which adversarial attack classes are architecturally "
+            "plausible on this graph."
+        ),
+        epilog=_MOTIFS_EPILOG,
+    )
+    p_motifs.add_argument(
+        "model",
+        metavar="MODEL.onnx",
+        help="Path to the ONNX model file (required)",
+    )
+    p_motifs.add_argument(
+        "-o",
+        "--output",
+        metavar="PATH",
+        help="Write JSON motif report to this file",
+    )
+    p_motifs.add_argument(
+        "--flow",
+        action="store_true",
+        help="Also print plain-English execution narrative after the scan",
+    )
     p_motifs.set_defaults(func=cmd_motifs)
 
     # patterns
-    p_pat = sub.add_parser("patterns", help="High-level DAG structural patterns")
-    p_pat.add_argument("model")
-    p_pat.add_argument("-o", "--output", help="Write text report to file")
-    p_pat.add_argument("--json", action="store_true", help="Emit JSON report on stdout")
+    p_pat = _subparser(
+        sub,
+        "patterns",
+        help_text="High-level DAG structural patterns",
+        description=(
+            "Detect coarse structural patterns (attention blocks, conv stacks, "
+            "normalization chains) and emit a human-readable or JSON report."
+        ),
+        epilog=_PATTERNS_EPILOG,
+    )
+    p_pat.add_argument(
+        "model",
+        metavar="MODEL.onnx",
+        help="Path to the ONNX model file (required)",
+    )
+    p_pat.add_argument(
+        "-o",
+        "--output",
+        metavar="PATH",
+        help="Write text report to this file instead of stdout",
+    )
+    p_pat.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit JSON report on stdout",
+    )
     p_pat.set_defaults(func=cmd_patterns)
 
     # flow
-    p_flow = sub.add_parser("flow", help="Plain-English execution narrative")
-    p_flow.add_argument("model")
+    p_flow = _subparser(
+        sub,
+        "flow",
+        help_text="Plain-English execution narrative",
+        description="Print a plain-English description of how data flows through the graph.",
+        epilog=_FLOW_EPILOG,
+    )
+    p_flow.add_argument(
+        "model",
+        metavar="MODEL.onnx",
+        help="Path to the ONNX model file (required)",
+    )
     p_flow.set_defaults(func=cmd_flow)
 
     # catalog
-    p_cat = sub.add_parser("catalog", help="Motif and technique reference")
-    p_cat.add_argument("--category")
-    p_cat.add_argument("--technique")
-    p_cat.add_argument("--gadget", help="Lookup structural motif by registry ID (e.g. GAP_FC_HEAD)")
-    p_cat.add_argument("--chain", help="Lookup compound motif chain by registry ID")
+    p_cat = _subparser(
+        sub,
+        "catalog",
+        help_text="Motif registry, chains, techniques, research coverage",
+        description=(
+            "Browse structural motifs, compound chains, and literature techniques. "
+            "With no flags, prints the RE catalog index. Use lookup flags for detail."
+        ),
+        epilog=_CATALOG_EPILOG,
+    )
+    p_cat.add_argument(
+        "--gadget",
+        metavar="ID",
+        help="Lookup structural motif by registry ID (e.g. GAP_FC_HEAD, SINGLE_MODALITY_INPUT)",
+    )
+    p_cat.add_argument(
+        "--chain",
+        metavar="ID",
+        help="Lookup compound motif chain by registry ID (e.g. CHAIN-PATCH-ATTACK-SURFACE)",
+    )
+    p_cat.add_argument(
+        "--coverage",
+        action="store_true",
+        help="Show research corpus completion status (notes vs registry)",
+    )
+    p_cat.add_argument(
+        "--category",
+        metavar="NAME",
+        help='List literature techniques in a category (e.g. "Adversarial Examples")',
+    )
+    p_cat.add_argument(
+        "--technique",
+        metavar="ID",
+        help="Lookup a literature technique by ID (e.g. AML-ADV-001)",
+    )
     p_cat.set_defaults(func=cmd_catalog)
 
     # operators
-    p_ops = sub.add_parser("operators", help="ONNX operator reference")
-    p_ops.add_argument("--op")
+    p_ops = _subparser(
+        sub,
+        "operators",
+        help_text="ONNX operator reference",
+        description=(
+            "List ONNX operators GraphSurgeon recognizes, or fetch metadata for one op."
+        ),
+        epilog=_OPERATORS_EPILOG,
+    )
+    p_ops.add_argument(
+        "--op",
+        metavar="OP_TYPE",
+        help="Show JSON metadata for one operator (e.g. Conv, Gemm, Softmax)",
+    )
     p_ops.set_defaults(func=cmd_operators)
 
     # edit
-    p_edit = sub.add_parser("edit", help="Counterfactual graph edits")
-    edit_sub = p_edit.add_subparsers(dest="edit_cmd", required=True)
-    p_val = edit_sub.add_parser("validate", help="Validate edited graph")
-    p_val.add_argument("model")
-    p_val.add_argument("--level", default="structural", choices=["none", "structural", "loadable", "runnable"])
+    p_edit = _subparser(
+        sub,
+        "edit",
+        help_text="Counterfactual graph edits and validation",
+        description=(
+            "Apply or validate counterfactual edits to ONNX graphs. "
+            "Subcommands: validate (check graph integrity), remove-node (surgical removal)."
+        ),
+        epilog=_EDIT_EPILOG,
+    )
+    edit_sub = p_edit.add_subparsers(
+        dest="edit_cmd",
+        required=True,
+        title="edit subcommands",
+        metavar="{validate,remove-node}",
+    )
+    p_val = edit_sub.add_parser(
+        "validate",
+        help="Validate an edited ONNX graph",
+        description="Check structural integrity and optionally load/run the graph.",
+        formatter_class=_FORMATTER,
+        epilog=_EDIT_VALIDATE_EPILOG,
+    )
+    p_val.add_argument(
+        "model",
+        metavar="MODEL.onnx",
+        help="Path to the ONNX model to validate (required)",
+    )
+    p_val.add_argument(
+        "--level",
+        default="structural",
+        choices=["none", "structural", "loadable", "runnable"],
+        help=(
+            "Validation depth: none (skip), structural (graph shape), "
+            "loadable (onnxruntime session), runnable (sample inference). "
+            "Default: structural"
+        ),
+    )
     p_val.set_defaults(func=cmd_edit_validate)
-    p_rm = edit_sub.add_parser("remove-node", help="Remove a node and rewire")
-    p_rm.add_argument("model")
-    p_rm.add_argument("node")
-    p_rm.add_argument("-o", "--output", required=True)
+    p_rm = edit_sub.add_parser(
+        "remove-node",
+        help="Remove a node and rewire consumers",
+        description="Remove one node by name, rewire edges, and write a new ONNX file.",
+        formatter_class=_FORMATTER,
+        epilog=_EDIT_REMOVE_EPILOG,
+    )
+    p_rm.add_argument(
+        "model",
+        metavar="MODEL.onnx",
+        help="Source ONNX model (required)",
+    )
+    p_rm.add_argument(
+        "node",
+        metavar="NODE_NAME",
+        help="Exact ONNX node name to remove (required; use inspect/topology to discover names)",
+    )
+    p_rm.add_argument(
+        "-o",
+        "--output",
+        required=True,
+        metavar="OUT.onnx",
+        help="Output path for the edited model (required)",
+    )
     p_rm.set_defaults(func=cmd_edit_remove_node)
 
     # diff
-    p_diff = sub.add_parser("diff", help="Compare two ONNX models")
-    p_diff.add_argument("model_a")
-    p_diff.add_argument("model_b")
+    p_diff = _subparser(
+        sub,
+        "diff",
+        help_text="Compare two ONNX models",
+        description="Diff node sets, shapes, and topology between a baseline and edited model.",
+        epilog=_DIFF_EPILOG,
+    )
+    p_diff.add_argument(
+        "model_a",
+        metavar="BASELINE.onnx",
+        help="Baseline or original model path (required)",
+    )
+    p_diff.add_argument(
+        "model_b",
+        metavar="EDITED.onnx",
+        help="Edited or candidate model path (required)",
+    )
     p_diff.set_defaults(func=cmd_diff)
 
     args = parser.parse_args(argv)
@@ -179,7 +480,11 @@ def cmd_flow(args):
 def cmd_catalog(args):
     from graph_surgeon.taxonomy import motif_catalog
     from graph_surgeon.taxonomy.display import format_catalog_chain, format_catalog_gadget
+    from graph_surgeon.taxonomy.research_coverage import format_coverage_report
 
+    if args.coverage:
+        print(format_coverage_report())
+        return 0
     if args.gadget:
         print(format_catalog_gadget(args.gadget))
         return 0

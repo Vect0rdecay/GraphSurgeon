@@ -65,6 +65,41 @@ class StructuralFinding:
 Vulnerability = StructuralFinding
 
 
+def make_registry_chain_finding(
+    chain_id: str,
+    node_id: Optional[str],
+    *,
+    gadget_ids_found: Optional[List[str]] = None,
+    extra_context: Optional[str] = None,
+    category: ThreatCategory = ThreatCategory.ADVERSARIAL_PERTURBATION,
+) -> StructuralFinding:
+    """Build a chain finding from CHAIN_REGISTRY without security ratings in display fields."""
+    from graph_surgeon.taxonomy.display import format_chain_finding
+
+    data = format_chain_finding(
+        chain_id,
+        gadget_ids_found=gadget_ids_found,
+        extra_context=extra_context,
+    )
+    return StructuralFinding(
+        id=chain_id,
+        category=category,
+        severity=Severity.INFO,
+        node_id=node_id,
+        title=data["title"],
+        description=data["description"],
+        attack_vector="See associated attack classes from literature via catalog --chain.",
+        exploitation_difficulty="",
+        impact="",
+        mitigation="See catalog --chain and linked gadget entries for structural context.",
+        references=list(data.get("research_basis", [])),
+        cvss_estimate=0.0,
+        finding_type=FindingType.ATTACK_CHAIN,
+        registry_id=chain_id,
+        chain_id=chain_id,
+    )
+
+
 @dataclass 
 class NodeSecurityProfile:
     """Security profile for a single node in the DAG."""
@@ -1156,6 +1191,11 @@ class GadgetType(Enum):
     QUANTIZATION_NODES = "quantization_nodes"                # QuantizeLinear/DequantizeLinear ops present
     VOXEL_ENCODING = "voxel_encoding"                        # Spatial binning structure (voxelization/pillar ops)
 
+    # Deployment-context motifs (graph-visible deployment signals)
+    SINGLE_MODALITY_INPUT = "single_modality_input"
+    IN_GRAPH_PREPROCESSING = "in_graph_preprocessing"
+    HAS_MULTIMODAL_FUSION = "has_multimodal_fusion"
+
 
 @dataclass
 class Gadget:
@@ -1258,10 +1298,32 @@ class GadgetDetector:
         GadgetType.ENCODER_PROJECTION_BRIDGE: ["projection_manipulation", "bridge_attack", "dimension_mismatch_exploit"],
         GadgetType.QUANTIZATION_NODES: ["quantization_error_amplification", "bit_flip_attack", "precision_exploit", "adversarial_quantization"],
         GadgetType.VOXEL_ENCODING: ["voxel_perturbation", "point_cloud_attack", "spatial_binning_exploit", "lidar_spoofing"],
+
+        GadgetType.SINGLE_MODALITY_INPUT: [
+            "thermal_domain_mismatch",
+            "cross_sensor_transfer",
+            "visible_trained_nonvisible_deploy",
+        ],
+        GadgetType.IN_GRAPH_PREPROCESSING: [
+            "preprocessing_trust_boundary",
+            "distribution_shift",
+            "isp_pipeline_mismatch",
+        ],
+        GadgetType.HAS_MULTIMODAL_FUSION: [
+            "cross_modal_injection",
+            "modality_hijack",
+            "late_fusion_exploit",
+        ],
     }
     
-    def detect_gadgets(self, nodes: List[NodeSecurityProfile], 
-                       edges: List[Tuple[str, str]]) -> List[Gadget]:
+    def detect_gadgets(
+        self,
+        nodes: List[NodeSecurityProfile],
+        edges: List[Tuple[str, str]],
+        *,
+        num_graph_inputs: Optional[int] = None,
+        graph_input_names: Optional[List[str]] = None,
+    ) -> List[Gadget]:
         """
         Identify ONLY meaningful gadgets that enable known attack techniques.
         
@@ -1820,9 +1882,148 @@ class GadgetDetector:
                     "voxel_nodes": structural_info["voxel_nodes"][:5],
                 }
             ))
+
+        # ========== DEPLOYMENT CONTEXT MOTIFS ==========
+        topology_info = self._detect_input_topology(
+            nodes,
+            adjacency,
+            reverse_adj,
+            node_map,
+            num_graph_inputs=num_graph_inputs,
+            graph_input_names=graph_input_names,
+        )
+        if topology_info["single_modality"]:
+            anchor = topology_info.get("anchor_node") or (
+                graph_input_names[0] if graph_input_names else "graph_input"
+            )
+            gadgets.append(Gadget(
+                id=f"GAD-single-modality-{anchor}",
+                gadget_type=GadgetType.SINGLE_MODALITY_INPUT,
+                node_id=anchor,
+                op_type="graph_input",
+                chainable_with=[GadgetType.GAP_FC_HEAD, GadgetType.IN_GRAPH_PREPROCESSING],
+                attack_contribution="Single primary ONNX input; no early multimodal fusion. "
+                                   "Deployment may use sensors not represented in the graph "
+                                   "(thermal, IR) while the DAG remains standard vision.",
+                position="early",
+                attributes={
+                    "num_graph_inputs": topology_info.get("num_graph_inputs", 1),
+                    "input_names": graph_input_names or [],
+                },
+            ))
+
+        if topology_info["has_multimodal_fusion"]:
+            fuse_anchor = topology_info.get("fusion_anchor") or "multimodal_fusion"
+            gadgets.append(Gadget(
+                id=f"GAD-multimodal-present-{fuse_anchor}",
+                gadget_type=GadgetType.HAS_MULTIMODAL_FUSION,
+                node_id=fuse_anchor,
+                op_type="multimodal_fusion",
+                chainable_with=[GadgetType.MULTIMODAL_FUSION_POINT, GadgetType.DUAL_ENCODER_ALIGNMENT],
+                attack_contribution="Multimodal fusion or dual-encoder alignment present in-graph.",
+                position="early",
+                attributes={"fusion_nodes": topology_info.get("fusion_nodes", [])[:5]},
+            ))
+
+        preprocess_nodes = self._detect_in_graph_preprocessing(nodes, adjacency, reverse_adj, node_map)
+        for prep in preprocess_nodes[:3]:
+            gadgets.append(Gadget(
+                id=f"GAD-in-graph-preprocess-{prep}",
+                gadget_type=GadgetType.IN_GRAPH_PREPROCESSING,
+                node_id=prep,
+                op_type=node_map[prep].op_type if prep in node_map else "preprocess",
+                chainable_with=[GadgetType.NORMALIZER, GadgetType.SHAPE_OP],
+                attack_contribution="In-graph stem preprocessing (normalize/scale) before backbone; "
+                                   "trust boundary inside ONNX.",
+                position="early",
+                attributes={"preprocess_role": "stem"},
+            ))
         
         return gadgets
-    
+
+    def _detect_input_topology(
+        self,
+        nodes: List[NodeSecurityProfile],
+        adjacency: dict,
+        reverse_adj: dict,
+        node_map: dict,
+        *,
+        num_graph_inputs: Optional[int] = None,
+        graph_input_names: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Infer single-modality vs multimodal-from-graph signals."""
+        result: Dict[str, Any] = {
+            "single_modality": False,
+            "has_multimodal_fusion": False,
+            "num_graph_inputs": num_graph_inputs,
+            "anchor_node": None,
+            "fusion_anchor": None,
+            "fusion_nodes": [],
+        }
+
+        multimodal_ext = self._detect_multimodal_extended_patterns(
+            nodes, adjacency, reverse_adj, node_map
+        )
+        if multimodal_ext["has_multimodal_fusion"] or multimodal_ext["has_dual_encoder_alignment"]:
+            result["has_multimodal_fusion"] = True
+            fuses = multimodal_ext.get("fusion_point_nodes") or []
+            result["fusion_nodes"] = fuses
+            if fuses:
+                result["fusion_anchor"] = fuses[0]
+
+        effective_inputs = num_graph_inputs
+        if effective_inputs is None:
+            roots = [n.node_id for n in nodes if not reverse_adj.get(n.node_id)]
+            effective_inputs = max(1, len(roots))
+
+        result["num_graph_inputs"] = effective_inputs
+        if effective_inputs == 1 and not result["has_multimodal_fusion"]:
+            result["single_modality"] = True
+            first_conv = next((n.node_id for n in nodes if n.op_type == "Conv"), None)
+            result["anchor_node"] = first_conv or (
+                graph_input_names[0] if graph_input_names else "graph_input"
+            )
+
+        return result
+
+    def _detect_in_graph_preprocessing(
+        self,
+        nodes: List[NodeSecurityProfile],
+        adjacency: dict,
+        reverse_adj: dict,
+        node_map: dict,
+    ) -> List[str]:
+        """Return node ids for stem preprocessing motifs (first ~15% of network)."""
+        total = len(nodes)
+        if total == 0:
+            return []
+
+        node_indices = {n.node_id: i for i, n in enumerate(nodes)}
+        early_limit = max(1, int(total * 0.15))
+        preprocess_ops = {
+            "Sub", "Div", "Mul", "Cast",
+            "BatchNormalization", "InstanceNormalization", "LayerNormalization",
+        }
+        found: List[str] = []
+        first_conv_idx = None
+        for n in nodes:
+            if n.op_type == "Conv":
+                first_conv_idx = node_indices.get(n.node_id, total)
+                break
+
+        for n in nodes:
+            idx = node_indices.get(n.node_id, total)
+            if idx >= early_limit:
+                continue
+            if n.op_type not in preprocess_ops:
+                continue
+            if first_conv_idx is not None and idx > first_conv_idx + 2:
+                continue
+            if n.node_id not in found:
+                found.append(n.node_id)
+
+        return found
+
     def _get_position(self, idx: int, total: int) -> str:
         """Determine position in network."""
         if idx < total * 0.15:
@@ -3413,6 +3614,9 @@ class GadgetDetector:
         # === RESEARCH-BASED CHAINS (Phase 1 findings) ===
         # Detect patterns from GoogleAp, EOT, LaVAN, RP2, DPATCH research
         chains.extend(self._find_research_based_chains(gadgets, gadget_map))
+
+        # === DEPLOYMENT CONTEXT CHAINS ===
+        chains.extend(self._find_deployment_context_chains(gadgets, gadget_map))
         
         return chains
     
@@ -3979,6 +4183,87 @@ class GadgetDetector:
         
         return chains
     
+    def _find_deployment_context_chains(
+        self, gadgets: List[Gadget], gadget_map: dict
+    ) -> List[StructuralFinding]:
+        """Emit registry-backed deployment-context chains when motifs align."""
+        chains: List[StructuralFinding] = []
+        types = {g.gadget_type for g in gadgets}
+
+        def _first_node(gt: GadgetType) -> Optional[str]:
+            for g in gadgets:
+                if g.gadget_type == gt:
+                    return g.node_id
+            return None
+
+        if GadgetType.SINGLE_MODALITY_INPUT in types:
+            if GadgetType.GAP_FC_HEAD in types or GadgetType.OBJECTNESS_HEAD in types:
+                anchor = _first_node(GadgetType.SINGLE_MODALITY_INPUT)
+                found = ["SINGLE_MODALITY_INPUT"]
+                if GadgetType.GAP_FC_HEAD in types:
+                    found.append("GAP_FC_HEAD")
+                if GadgetType.OBJECTNESS_HEAD in types:
+                    found.append("OBJECTNESS_HEAD")
+                chains.append(make_registry_chain_finding(
+                    "CHAIN-SINGLE-MODALITY-VISION",
+                    anchor,
+                    gadget_ids_found=found,
+                ))
+
+        if GadgetType.IN_GRAPH_PREPROCESSING in types:
+            anchor = _first_node(GadgetType.IN_GRAPH_PREPROCESSING)
+            chains.append(make_registry_chain_finding(
+                "CHAIN-PREPROCESSING-TRUST-BOUNDARY",
+                anchor,
+                gadget_ids_found=["IN_GRAPH_PREPROCESSING"],
+            ))
+
+        if GadgetType.AUDIO_MEL_INPUT in types and (
+            GadgetType.AUDIO_STRIDE_DOWNSAMPLE in types
+            or GadgetType.AUDIO_1D_CONV in types
+        ):
+            anchor = _first_node(GadgetType.AUDIO_MEL_INPUT)
+            found = ["AUDIO_MEL_INPUT"]
+            if GadgetType.AUDIO_STRIDE_DOWNSAMPLE in types:
+                found.append("AUDIO_STRIDE_DOWNSAMPLE")
+            if GadgetType.AUDIO_1D_CONV in types:
+                found.append("AUDIO_1D_CONV")
+            chains.append(make_registry_chain_finding(
+                "CHAIN-AUDIO-ADVERSARIAL-SURFACE",
+                anchor,
+                gadget_ids_found=found,
+            ))
+
+        mel_or_seq = (
+            GadgetType.AUDIO_MEL_INPUT in types
+            or GadgetType.ENCODER_DECODER_SEQ2SEQ in types
+        )
+        decode_ctl = (
+            GadgetType.CTC_DECODER_STRUCTURE in types
+            or GadgetType.SPECIAL_TOKEN_CONTROL_FLOW in types
+        )
+        if mel_or_seq and decode_ctl:
+            anchor = (
+                _first_node(GadgetType.AUDIO_MEL_INPUT)
+                or _first_node(GadgetType.ENCODER_DECODER_SEQ2SEQ)
+            )
+            found = []
+            if GadgetType.AUDIO_MEL_INPUT in types:
+                found.append("AUDIO_MEL_INPUT")
+            if GadgetType.ENCODER_DECODER_SEQ2SEQ in types:
+                found.append("ENCODER_DECODER_SEQ2SEQ")
+            if GadgetType.CTC_DECODER_STRUCTURE in types:
+                found.append("CTC_DECODER_STRUCTURE")
+            if GadgetType.SPECIAL_TOKEN_CONTROL_FLOW in types:
+                found.append("SPECIAL_TOKEN_CONTROL_FLOW")
+            chains.append(make_registry_chain_finding(
+                "CHAIN-ACOUSTIC-COMMAND-SURFACE",
+                anchor,
+                gadget_ids_found=found,
+            ))
+
+        return chains
+
     def _find_research_based_chains(self, gadgets: List[Gadget], 
                                    gadget_map: dict) -> List[StructuralFinding]:
         """
@@ -4001,79 +4286,33 @@ class GadgetDetector:
         no_attention_gadgets = [g for g in gadgets if g.gadget_type == GadgetType.NO_SPATIAL_ATTENTION]
         has_attention_gadgets = [g for g in gadgets if g.gadget_type == GadgetType.HAS_SPATIAL_ATTENTION]
         
-        # === CHAIN 1: Classic Patch Attack Vulnerability (GoogleAp, LaVAN) ===
+        # === CHAIN 1: Patch attack surface (registry-backed) ===
         if gap_fc_gadgets:
-            # Determine severity based on attention presence
+            attention_note = ""
             if no_attention_gadgets:
-                # No attention + GAP-FC = CRITICAL vulnerability
-                severity = Severity.CRITICAL
-                cvss = 8.5
-                attention_note = "AGGRAVATING FACTOR: Model has NO spatial attention mechanisms. " \
-                                "All spatial locations contribute equally, making patches maximally effective."
+                attention_note = (
+                    "Also detected: no spatial attention before pooling; all spatial locations "
+                    "contribute equally to global pool (patch-friendly topology)."
+                )
             elif has_attention_gadgets:
-                # Has attention + GAP-FC = MEDIUM vulnerability (attention mitigates)
-                severity = Severity.MEDIUM
-                cvss = 5.5
-                attention_note = "MITIGATING FACTOR: Model has spatial attention mechanisms that may " \
-                                "help filter anomalous patch regions, reducing attack effectiveness."
-            else:
-                # Unknown attention status = HIGH (default)
-                severity = Severity.HIGH
-                cvss = 7.5
-                attention_note = ""
-            
-            chains.append(StructuralFinding(
-                id="CHAIN-PATCH-ATTACK-SURFACE",
-                category=ThreatCategory.ADVERSARIAL_PERTURBATION,
-                severity=severity,
-                node_id=gap_fc_gadgets[0].node_id,
-                title="Patch Attack Vulnerability (GoogleAp/LaVAN pattern)",
-                description=f"Model has GlobalPool->FC classifier pattern at '{gap_fc_gadgets[0].node_id}'. "
-                           f"Research (Brown et al. 2017, Karmon et al. 2018) shows this is the canonical "
-                           f"architecture vulnerability exploited by adversarial patch attacks. {attention_note}",
-                attack_vector="Adversarial patches (printed images, stickers) can cause targeted misclassification. "
-                             "Global pooling aggregates patch features into final representation, "
-                             "allowing small localized perturbations to dominate classification.",
-                exploitation_difficulty="Low - patches can be printed and placed anywhere in scene",
-                impact=f"{'CRITICAL' if severity == Severity.CRITICAL else 'HIGH' if severity == Severity.HIGH else 'MEDIUM'} - "
-                       f"Physical-world targeted attacks {'highly feasible' if no_attention_gadgets else 'possible'} with printed patches",
-                mitigation="1. Add spatial attention before pooling to filter anomalous regions. "
-                          "2. Use attention-based pooling instead of GAP. "
-                          "3. Implement patch detection in preprocessing. "
-                          "4. Train with adversarial patch augmentation.",
-                references=[
-                    "https://arxiv.org/abs/1712.09665",  # Adversarial Patch (GoogleAp)
-                    "https://arxiv.org/abs/1801.02608",  # LaVAN
-                ],
-                cvss_estimate=cvss,
-                finding_type=FindingType.ATTACK_CHAIN
+                attention_note = (
+                    "Also detected: spatial attention may down-weight anomalous regions "
+                    "(mitigating factor for patch attacks)."
+                )
+            chains.append(make_registry_chain_finding(
+                "CHAIN-PATCH-ATTACK-SURFACE",
+                gap_fc_gadgets[0].node_id,
+                gadget_ids_found=["GAP_FC_HEAD"],
+                extra_context=attention_note or None,
             ))
         
-        # === CHAIN 2: Physical World Attack Vulnerability (EOT, RP2) ===
+        # === CHAIN 2: Physical-world attack surface (registry-backed) ===
         if aliasing_gadgets:
-            chains.append(StructuralFinding(
-                id="CHAIN-PHYSICAL-WORLD-ATTACK",
-                category=ThreatCategory.ADVERSARIAL_PERTURBATION,
-                severity=Severity.HIGH,
-                node_id=aliasing_gadgets[0].node_id,
-                title=f"Physical-World Attack Vulnerability ({len(aliasing_gadgets)} aliasing points)",
-                description=f"Model has {len(aliasing_gadgets)} early stride-2 convolutions without anti-aliasing. "
-                           f"Research (Athalye et al. 2018, Eykholt et al. 2018) shows this enables attacks "
-                           f"that survive physical-world transformations (rotation, scaling, lighting).",
-                attack_vector="EOT-optimized adversarial examples remain effective when printed, photographed, "
-                             "or viewed from different angles. High-frequency perturbations fold into lower "
-                             "frequencies during aliased downsampling, persisting through the network.",
-                exploitation_difficulty="Medium - requires EOT optimization but well-documented",
-                impact="HIGH - Adversarial objects (3D printed, stickers on signs) work in real world",
-                mitigation="1. Add BlurPool or anti-aliased downsampling before strided operations. "
-                          "2. Move aggressive downsampling later in network. "
-                          "3. Train with transformation augmentation.",
-                references=[
-                    "https://arxiv.org/abs/1707.07397",  # EOT
-                    "https://arxiv.org/abs/1707.08945",  # RP2
-                ],
-                cvss_estimate=7.0,
-                finding_type=FindingType.ATTACK_CHAIN
+            chains.append(make_registry_chain_finding(
+                "CHAIN-PHYSICAL-WORLD-ATTACK",
+                aliasing_gadgets[0].node_id,
+                gadget_ids_found=["ALIASING_DOWNSAMPLE"],
+                extra_context=f"{len(aliasing_gadgets)} aliasing downsampling motif(s) in graph.",
             ))
         
         # === CHAIN 3: Amplified Multi-Scale Attack (DPATCH-style) ===
@@ -4104,32 +4343,12 @@ class GadgetDetector:
                 finding_type=FindingType.ATTACK_CHAIN
             ))
         
-        # === CHAIN 4: Combined High-Risk Pattern ===
-        # If model has BOTH GAP-FC AND aliasing - compound vulnerability
+        # === CHAIN 4: Compound physical + patch surface (registry-backed) ===
         if gap_fc_gadgets and aliasing_gadgets:
-            chains.append(StructuralFinding(
-                id="CHAIN-COMPOUND-PHYSICAL-PATCH",
-                category=ThreatCategory.ADVERSARIAL_PERTURBATION,
-                severity=Severity.CRITICAL,
-                node_id=gap_fc_gadgets[0].node_id,
-                title="Compound Physical Attack Vulnerability",
-                description="CRITICAL: Model combines GAP->FC pattern with aliasing vulnerabilities. "
-                           "This enables physical-world patch attacks with EOT optimization that "
-                           "are robust to real-world conditions AND exploit the linear classifier head.",
-                attack_vector="Physical patches (printed, stickers) optimized with EOT will be highly "
-                             "effective. Attacks survive transformations AND exploit GAP aggregation.",
-                exploitation_difficulty="Low - combines multiple well-documented attack techniques",
-                impact="CRITICAL - Robust physical-world targeted attacks highly feasible",
-                mitigation="Address both vulnerabilities: "
-                          "1. Add anti-aliasing (BlurPool) "
-                          "2. Replace GAP with attention pooling "
-                          "3. Add patch detection preprocessing",
-                references=[
-                    "https://arxiv.org/abs/1712.09665",
-                    "https://arxiv.org/abs/1707.07397",
-                ],
-                cvss_estimate=8.5,
-                finding_type=FindingType.ATTACK_CHAIN
+            chains.append(make_registry_chain_finding(
+                "CHAIN-COMPOUND-PHYSICAL-PATCH",
+                gap_fc_gadgets[0].node_id,
+                gadget_ids_found=["GAP_FC_HEAD", "ALIASING_DOWNSAMPLE"],
             ))
         
         # ========== PHASE 2: OBJECT DETECTOR ATTACK CHAINS ==========
@@ -6157,8 +6376,15 @@ class StructuralMotifAnalyzer:
         
         return " ".join(parts)
     
-    def generate_report(self, model_name: str, nodes: List[NodeSecurityProfile],
-                       edges: List[Tuple[str, str]]) -> ModelSecurityReport:
+    def generate_report(
+        self,
+        model_name: str,
+        nodes: List[NodeSecurityProfile],
+        edges: List[Tuple[str, str]],
+        *,
+        num_graph_inputs: Optional[int] = None,
+        graph_input_names: Optional[List[str]] = None,
+    ) -> ModelSecurityReport:
         """Generate complete security report for a model."""
         
         report = ModelSecurityReport(
@@ -6221,7 +6447,12 @@ class StructuralMotifAnalyzer:
         
         # Detect gadgets using the new comprehensive detector
         gadget_detector = GadgetDetector()
-        detected_gadgets = gadget_detector.detect_gadgets(nodes, edges)
+        detected_gadgets = gadget_detector.detect_gadgets(
+            nodes,
+            edges,
+            num_graph_inputs=num_graph_inputs,
+            graph_input_names=graph_input_names,
+        )
         
         # Find attack chains from gadget combinations
         gadget_chains = gadget_detector.find_attack_chains(detected_gadgets, edges)

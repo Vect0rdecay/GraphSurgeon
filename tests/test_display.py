@@ -56,6 +56,25 @@ def test_catalog_chain_patch():
     text = format_catalog_chain("CHAIN-PATCH-ATTACK-SURFACE")
     assert "CHAIN-PATCH-ATTACK-SURFACE" in text
     assert "GAP_FC_HEAD" in text
+    assert "see catalog --gadget" not in text.lower()
+    assert "nn_security_analyzer" not in text.lower()
+    assert "What this chain means" in text
+    assert "Brown" in text or "GoogleAp" in text
+    assert "Adversarial Patch" in text or "adversarial_patch" in text
+    assert "36-GoogleAp-2017" in text
+    assert "39-LaVAN-2018" in text
+    assert "Detection rationale" in text
+    assert "NO_SPATIAL_ATTENTION" in text
+    assert "Aggregated attack classes" in text
+
+
+def test_catalog_gadget_gap_includes_paper_notes():
+    text = format_catalog_gadget("GAP_FC_HEAD")
+    assert "Research basis (papers):" in text
+    assert "36-GoogleAp-2017" in text
+    assert "Graph detection logic:" in text
+    assert "see catalog --gadget" not in text.lower()
+    assert "nn_security_analyzer" not in text.lower()
 
 
 def test_display_map_pilot_fixture_matches_registry():

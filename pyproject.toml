@@ -27,6 +27,14 @@ graph-surgeon = "graph_surgeon.cli:main"
 where = ["."]
 include = ["graph_surgeon*"]
 
+[tool.setuptools.package-data]
+graph_surgeon = [
+  "taxonomy/data/*.json",
+  "taxonomy/data/attack_research_notes.md",
+  "taxonomy/data/detection_rationale.md",
+  "taxonomy/data/RESEARCH_NOTE_TEMPLATE.md",
+]
+
 [tool.pytest.ini_options]
 markers = [
     "integration: tests requiring external ONNX fixtures (GRAPH_SURGEON_FIXTURE_ROOT)",

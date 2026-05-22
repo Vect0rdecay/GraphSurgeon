@@ -1,0 +1,681 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-05-22",
+  "summary": {
+    "complete": 75,
+    "out_of_scope": 0,
+    "missing": 0
+  },
+  "papers": {
+    "100": {
+      "slug": "100-ERAttack-2020",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "SHARED_BACKBONE"
+      ],
+      "source": "batch_harvest"
+    },
+    "101": {
+      "slug": "101-ScreenAttack-2020",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "SHARED_BACKBONE"
+      ],
+      "source": "batch_harvest"
+    },
+    "102": {
+      "slug": "102-PG(Poltergeist)-2021",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "AUDIO_MEL_INPUT",
+        "CHAIN-ACOUSTIC-COMMAND-SURFACE"
+      ],
+      "source": "deployment_context_upgrade"
+    },
+    "36": {
+      "slug": "36-GoogleAp-2017",
+      "status": "complete",
+      "tier": "A",
+      "registry_gadgets": [
+        "GAP_FC_HEAD"
+      ],
+      "source": "upgraded"
+    },
+    "37": {
+      "slug": "37-PAE-2018",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE"
+      ],
+      "source": "batch_harvest"
+    },
+    "38": {
+      "slug": "38-EOT(ExpectationOverTransformation)-2018",
+      "status": "complete",
+      "tier": "A",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE"
+      ],
+      "source": "upgraded"
+    },
+    "39": {
+      "slug": "39-LaVAN-2018",
+      "status": "complete",
+      "tier": "A",
+      "registry_gadgets": [
+        "GAP_FC_HEAD"
+      ],
+      "source": "upgraded"
+    },
+    "40": {
+      "slug": "40-LightAttack-2018",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE",
+        "NORMALIZER"
+      ],
+      "source": "upgraded"
+    },
+    "41": {
+      "slug": "41-D2P-2019",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE"
+      ],
+      "source": "batch_harvest"
+    },
+    "42": {
+      "slug": "42-ACS-2019",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "GAP_FC_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "43": {
+      "slug": "43-ProjectorAttack-2019",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE",
+        "NORMALIZER"
+      ],
+      "source": "upgraded"
+    },
+    "44": {
+      "slug": "44-AdversarialACO-2020",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "GAP_FC_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "45": {
+      "slug": "45-Adv-watermark-2020",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "GAP_FC_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "46": {
+      "slug": "46-ABBA-2020",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE"
+      ],
+      "source": "batch_harvest"
+    },
+    "47": {
+      "slug": "47-ViewFool-2020",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE"
+      ],
+      "source": "upgraded"
+    },
+    "48": {
+      "slug": "48-SLMAttack-2021",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE",
+        "NORMALIZER"
+      ],
+      "source": "upgraded"
+    },
+    "49": {
+      "slug": "49-Meta-Attack-2021",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "50": {
+      "slug": "50-Invisibleperturbations-2021",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "IN_GRAPH_PREPROCESSING",
+        "SINGLE_MODALITY_INPUT"
+      ],
+      "source": "deployment_context_upgrade"
+    },
+    "51": {
+      "slug": "51-AdversarialISP-2021",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "IN_GRAPH_PREPROCESSING",
+        "CHAIN-PREPROCESSING-TRUST-BOUNDARY"
+      ],
+      "source": "deployment_context_upgrade"
+    },
+    "52": {
+      "slug": "52-AdvLB-2021",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE",
+        "NORMALIZER"
+      ],
+      "source": "upgraded"
+    },
+    "54": {
+      "slug": "54-TnTattack-2022",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "GAP_FC_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "56": {
+      "slug": "56-AdvCF-2022",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE (weather)"
+      ],
+      "source": "upgraded"
+    },
+    "57": {
+      "slug": "57-SPAA-2022",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE",
+        "NORMALIZER"
+      ],
+      "source": "upgraded"
+    },
+    "58": {
+      "slug": "58-FakeWeather-2022",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE (weather)"
+      ],
+      "source": "upgraded"
+    },
+    "59": {
+      "slug": "59-AdvRain-2023",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE (weather)"
+      ],
+      "source": "upgraded"
+    },
+    "60": {
+      "slug": "60-RP2-2018",
+      "status": "complete",
+      "tier": "A",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE"
+      ],
+      "source": "upgraded"
+    },
+    "61": {
+      "slug": "61-DARTS-2018",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE"
+      ],
+      "source": "batch_harvest"
+    },
+    "62": {
+      "slug": "62-RogueSigns-2018",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE"
+      ],
+      "source": "batch_harvest"
+    },
+    "63": {
+      "slug": "63-PS-GAN-2019",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE"
+      ],
+      "source": "batch_harvest"
+    },
+    "64": {
+      "slug": "64-AdvCam-2020",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE"
+      ],
+      "source": "batch_harvest"
+    },
+    "65": {
+      "slug": "65-OPAD-2021",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE",
+        "NORMALIZER"
+      ],
+      "source": "upgraded"
+    },
+    "66": {
+      "slug": "66-AdversarialShadow-2022",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE",
+        "NORMALIZER"
+      ],
+      "source": "upgraded"
+    },
+    "67": {
+      "slug": "67-PhysGAN-2020",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "MAXPOOL_AFTER_FUSION"
+      ],
+      "source": "batch_harvest"
+    },
+    "70": {
+      "slug": "70-TPatch-2023",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "AUDIO_MEL_INPUT",
+        "CHAIN-AUDIO-ADVERSARIAL-SURFACE"
+      ],
+      "source": "deployment_context_upgrade"
+    },
+    "71": {
+      "slug": "71-DPATCH-2019",
+      "status": "complete",
+      "tier": "A",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD, FPN_STRUCTURE"
+      ],
+      "source": "upgraded"
+    },
+    "72": {
+      "slug": "72-Dpatch2-2019",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "73": {
+      "slug": "73-ObjectHider-2020",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "upgraded"
+    },
+    "74": {
+      "slug": "74-LPAttack-2020",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "75": {
+      "slug": "75-SwitchPatch-2022",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "76": {
+      "slug": "76-ExtendedRP2-2018",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE"
+      ],
+      "source": "batch_harvest"
+    },
+    "77": {
+      "slug": "77-ShapeShifter-2018",
+      "status": "complete",
+      "tier": "A",
+      "registry_gadgets": [
+        "TWO_STAGE_RPN"
+      ],
+      "source": "upgraded"
+    },
+    "78": {
+      "slug": "78-NestedAE-2019",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "NMS_DEPENDENCY"
+      ],
+      "source": "batch_harvest"
+    },
+    "79": {
+      "slug": "79-TranslucentPatch-2021",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "NMS_DEPENDENCY"
+      ],
+      "source": "batch_harvest"
+    },
+    "80": {
+      "slug": "80-SLAP-2021",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE",
+        "NORMALIZER"
+      ],
+      "source": "upgraded"
+    },
+    "81": {
+      "slug": "81-AdversarialRain-2022",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE",
+        "NORMALIZER"
+      ],
+      "source": "upgraded"
+    },
+    "82": {
+      "slug": "82-AdvRD-2023",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [
+        "ALIASING_DOWNSAMPLE",
+        "NORMALIZER"
+      ],
+      "source": "upgraded"
+    },
+    "83": {
+      "slug": "83-InvisibleCloak-2018",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "HIGH_FANIN_FUSION"
+      ],
+      "source": "batch_harvest"
+    },
+    "84": {
+      "slug": "84-AdversarialYOLO-2019",
+      "status": "complete",
+      "tier": "A",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "upgraded"
+    },
+    "85": {
+      "slug": "85-UPC-2020",
+      "status": "complete",
+      "tier": "A",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD",
+        "ALIASING"
+      ],
+      "source": "upgraded"
+    },
+    "86": {
+      "slug": "86-AdversarialT-shirt-2020",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "87": {
+      "slug": "87-InvisibleCloak2-2020",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "88": {
+      "slug": "88-NAP-2021",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "89": {
+      "slug": "89-LAP-2021",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "90": {
+      "slug": "90-AdvTexture-2022",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "91": {
+      "slug": "91-AdvART-2023",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "92": {
+      "slug": "92-PatchofInvisibility-2023",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "93": {
+      "slug": "93-DAP-2023",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD"
+      ],
+      "source": "batch_harvest"
+    },
+    "94": {
+      "slug": "94-AdversarialBulbs-2021",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "SINGLE_MODALITY_INPUT",
+        "CHAIN-SINGLE-MODALITY-VISION"
+      ],
+      "source": "deployment_context_upgrade"
+    },
+    "95": {
+      "slug": "95-QRAttack-2022",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "SINGLE_MODALITY_INPUT",
+        "CHAIN-SINGLE-MODALITY-VISION"
+      ],
+      "source": "deployment_context_upgrade"
+    },
+    "96": {
+      "slug": "96-HOTCOLD-2022",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "SINGLE_MODALITY_INPUT",
+        "CHAIN-SINGLE-MODALITY-VISION"
+      ],
+      "source": "deployment_context_upgrade"
+    },
+    "97": {
+      "slug": "97-AIP-2023",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "SINGLE_MODALITY_INPUT",
+        "CHAIN-SINGLE-MODALITY-VISION"
+      ],
+      "source": "deployment_context_upgrade"
+    },
+    "98": {
+      "slug": "98-AdvIB-2023",
+      "status": "complete",
+      "tier": "B",
+      "registry_gadgets": [
+        "SINGLE_MODALITY_INPUT",
+        "CHAIN-SINGLE-MODALITY-VISION"
+      ],
+      "source": "deployment_context_upgrade"
+    },
+    "99": {
+      "slug": "99-CAMOU-2019",
+      "status": "complete",
+      "tier": "A",
+      "registry_gadgets": [
+        "OBJECTNESS_HEAD",
+        "ALIASING"
+      ],
+      "source": "upgraded"
+    },
+    "103": {
+      "slug": "103-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "104": {
+      "slug": "104-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "105": {
+      "slug": "105-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "106": {
+      "slug": "106-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "107": {
+      "slug": "107-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "108": {
+      "slug": "108-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "109": {
+      "slug": "109-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "110": {
+      "slug": "110-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "111": {
+      "slug": "111-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "112": {
+      "slug": "112-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "113": {
+      "slug": "113-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    },
+    "114": {
+      "slug": "114-extended",
+      "status": "complete",
+      "tier": "C",
+      "registry_gadgets": [],
+      "source": "upgraded"
+    }
+  }
+}

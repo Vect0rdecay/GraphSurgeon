@@ -26,6 +26,17 @@ Minimal install (no runtime validation or tests):
 
 ## CLI
 
+After `pip install -e .`, use the project venv (the `graph-surgeon` command is not on your system PATH unless you activate the venv):
+
+```bash
+source .venv/bin/activate   # optional; then graph-surgeon works on PATH
+# or always:
+.venv/bin/graph-surgeon --help          # subcommands + copy-paste examples
+.venv/bin/graph-surgeon catalog --help  # --gadget, --chain, --coverage, etc.
+.venv/bin/graph-surgeon catalog --coverage
+.venv/bin/python -m graph_surgeon catalog --coverage
+```
+
 ```bash
 graph-surgeon inspect model.onnx
 graph-surgeon topology model.onnx
@@ -34,6 +45,7 @@ graph-surgeon motifs model.onnx -o report.json
 graph-surgeon flow model.onnx
 graph-surgeon catalog --gadget GAP_FC_HEAD
 graph-surgeon catalog --chain CHAIN-PATCH-ATTACK-SURFACE
+graph-surgeon catalog --coverage
 graph-surgeon catalog --category adversarial_perturbation
 graph-surgeon operators --op Conv
 graph-surgeon edit validate edited.onnx --level runnable
@@ -43,7 +55,13 @@ graph-surgeon diff baseline.onnx edited.onnx
 
 Display titles use registry IDs (for example `GAP_FC_HEAD — Global Average Pool → FC Head`).
 Each finding indexes AML literature by graph structure; it does not rate security posture.
-Use `catalog --gadget` or `catalog --chain` to look up `research_basis` and associated attack classes.
+Use `catalog --gadget` or `catalog --chain` to look up `research_basis`, paper analysis, and associated attack classes. Research notes and detection rationale ship inside the package under `graph_surgeon/taxonomy/data/` (no external research path required).
+
+### Research corpus
+
+- Authoring spec: `graph_surgeon/taxonomy/data/RESEARCH_NOTE_TEMPLATE.md`
+- Coverage: `.venv/bin/graph-surgeon catalog --coverage` (or `python -m graph_surgeon catalog --coverage` from the venv)
+- Rebuild after bulk edits: `.venv/bin/python scripts/build_research_corpus.py`
 
 ## Python API
 
@@ -80,6 +98,8 @@ print(stats.summary())
 Structural motifs and patterns describe **attack landscape**: which adversarial attack classes published in the AML literature are structurally plausible on this ONNX graph. GraphSurgeon is a research-grounded structural index, not a scanner that confirms exploitability or assigns severity.
 
 Outputs omit risk scores and severity tiers. Training, weights, and deployment determine whether attacks succeed.
+
+Deployment-context motifs (`SINGLE_MODALITY_INPUT`, `IN_GRAPH_PREPROCESSING`, `HAS_MULTIMODAL_FUSION`, audio registry IDs) index papers where the attack channel is partly outside the DAG (thermal, ISP, acoustics). Chains include `CHAIN-SINGLE-MODALITY-VISION`, `CHAIN-PREPROCESSING-TRUST-BOUNDARY`, `CHAIN-AUDIO-ADVERSARIAL-SURFACE`, and `CHAIN-ACOUSTIC-COMMAND-SURFACE`. Lookup: `graph-surgeon catalog --gadget SINGLE_MODALITY_INPUT`.
 
 ## Comparison to Netron
 
