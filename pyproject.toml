@@ -31,7 +31,6 @@ include = ["graph_surgeon*"]
 graph_surgeon = [
   "taxonomy/data/*.json",
   "taxonomy/data/attack_research_notes.md",
-  "taxonomy/data/RESEARCH_NOTE_TEMPLATE.md",
 ]
 
 [tool.pytest.ini_options]

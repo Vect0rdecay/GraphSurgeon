@@ -3,7 +3,7 @@
 Per-paper adversarial ML analysis for ONNX reverse engineering. Each `### [id]` section maps
 literature to structural motifs (attack landscape from graph structure, not exploitability).
 
-Authoring spec: `RESEARCH_NOTE_TEMPLATE.md`. Coverage: `research_coverage.json`.
+Coverage index: `research_coverage.json`.
 
 ---
 

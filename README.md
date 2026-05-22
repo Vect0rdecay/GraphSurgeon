@@ -78,8 +78,6 @@ Normal use does not require touching these files. To see completion status:
 .venv/bin/graph-surgeon catalog --coverage
 ```
 
-Authoring format for new or updated notes: `graph_surgeon/taxonomy/data/RESEARCH_NOTE_TEMPLATE.md`.
-
 ## Python API
 
 ```python

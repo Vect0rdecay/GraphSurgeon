@@ -95,6 +95,7 @@ prompt-*.md
 *-internal*
 *EXPOSURE_AUDIT*
 *detection_rationale*
+*RESEARCH_NOTE_TEMPLATE*
 PRE_PUSH*.md
 TODO.private*
 TODO.local*
@@ -171,3 +172,4 @@ temp/
 .DS_Store
 Thumbs.db
 desktop.ini
+attack_research_internal.md
