@@ -24,6 +24,7 @@ _FINDING_RATING_FIELDS = frozenset({
     "severity",
     "cvss_estimate",
     "risk",
+    "weight",
     "exploitation_difficulty",
 })
 

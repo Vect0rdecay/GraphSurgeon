@@ -21,9 +21,9 @@ if TYPE_CHECKING:
 
 # Pilot pattern detector -> registry gadget ID
 PATTERN_DETECTOR_TO_REGISTRY: Dict[str, str] = {
-    "_detect_batchnorm_vuln": "NORMALIZER",
-    "_detect_global_pooling_vuln": "GAP_FC_HEAD",
-    "_detect_fc_layer_vuln": "GAP_FC_HEAD",
+    "_detect_batchnorm_pattern": "NORMALIZER",
+    "_detect_global_pooling_pattern": "GAP_FC_HEAD",
+    "_detect_fc_layer_pattern": "GAP_FC_HEAD",
     "_detect_maxpool_amplification": "MAXPOOL_AFTER_FUSION",
 }
 

@@ -1,15 +1,9 @@
 """
-Structural Pattern Analysis for Adversarial ML Security Research
+Structural pattern analysis for ONNX computational graphs.
 
-Detects high-risk architectural patterns and robustness indicators
-in neural network DAGs that are relevant for adversarial attacks.
-
-Based on security research workflows for identifying:
-- Gradient bottlenecks
-- Feature fusion points
-- Amplification layers
-- Attack surface mapping
-- Defense placement evaluation
+Detects coarse architectural blocks (conv stacks, fusion points, pooling heads,
+attention, normalization chains) and maps them to associated attack classes from
+the AML literature. Complements the finer-grained motif registry (`motifs` command).
 """
 
 from dataclasses import dataclass, field
@@ -20,13 +14,13 @@ from collections import defaultdict
 from graph_surgeon.graph.topology import GraphTopologyConfig
 
 
-class PatternRisk(Enum):
-    """Risk level of detected patterns."""
-    CRITICAL = "critical"    # Highly exploitable
-    HIGH = "high"            # Significant attack surface
-    MEDIUM = "medium"        # Moderate concern
-    LOW = "low"              # Minor concern
-    POSITIVE = "positive"    # Robustness indicator (good)
+class PatternWeight(Enum):
+    """Internal ranking for pattern aggregation (not emitted in CLI or JSON export)."""
+    PRIMARY = "primary"
+    STRONG = "strong"
+    MODERATE = "moderate"
+    MILD = "mild"
+    POSITIVE = "positive"  # Robustness indicator
 
 
 class PatternCategory(Enum):
@@ -45,7 +39,7 @@ class StructuralPattern:
     id: str
     name: str
     category: PatternCategory
-    risk: PatternRisk
+    weight: PatternWeight
     nodes_involved: List[str]
     description: str
     attack_implications: str
@@ -72,7 +66,7 @@ class StructuralAnalysisReport:
     model_name: str
     
     # Detected patterns
-    high_risk_patterns: List[StructuralPattern] = field(default_factory=list)
+    structural_patterns: List[StructuralPattern] = field(default_factory=list)
     robustness_indicators: List[StructuralPattern] = field(default_factory=list)
     
     # Attack surface mapping
@@ -110,7 +104,7 @@ class StructuralPatternAnalyzer:
     Analyzes neural network DAG structure for security-relevant patterns.
     
     Detects:
-    - High-risk structures that amplify adversarial perturbations
+    - Structural blocks that amplify or route perturbations
     - Robustness indicators that provide natural defense
     - Attack surface mapping for targeted research
     """
@@ -159,7 +153,7 @@ class StructuralPatternAnalyzer:
     FC_OPS = {"Gemm", "Linear", "MatMul", "Dense", "FullyConnected"}
     
     # =========================================================================
-    # VULNERABILITY -> ATTACK CLASS MAPPINGS
+    # Pattern -> attack class mappings
     # =========================================================================
     
     # Operations that indicate potential ShadowLogic injection points
@@ -345,7 +339,7 @@ class StructuralPatternAnalyzer:
             id=data["id"],
             name=data["name"],
             category=category,
-            risk=PatternRisk.MEDIUM,
+            weight=PatternWeight.MODERATE,
             nodes_involved=nodes_involved,
             description=data["description"],
             attack_implications=attack_implications or (
@@ -402,26 +396,26 @@ class StructuralPatternAnalyzer:
         report.max_fan_out = self._compute_max_fan_out()
         report.longest_linear_chain = self._find_longest_linear_chain()
         
-        # Detect high-risk patterns
-        report.high_risk_patterns.extend(self._detect_concat_fusion())
-        report.high_risk_patterns.extend(self._detect_maxpool_amplification())
-        report.high_risk_patterns.extend(self._detect_linear_chains())
-        report.high_risk_patterns.extend(self._detect_large_fan_in())
-        report.high_risk_patterns.extend(self._detect_attention_patterns())
-        report.high_risk_patterns.extend(self._detect_residual_explosions())
-        report.high_risk_patterns.extend(self._detect_early_stride())
-        report.high_risk_patterns.extend(self._detect_batchnorm_vuln())
-        report.high_risk_patterns.extend(self._detect_global_pooling_vuln())
-        report.high_risk_patterns.extend(self._detect_fc_layer_vuln())
-        report.high_risk_patterns.extend(self._detect_shape_ops_vuln())
-        report.high_risk_patterns.extend(self._detect_saturating_activations())
-        report.high_risk_patterns.extend(self._detect_multimodal_fusion())
-        report.high_risk_patterns.extend(self._detect_shadowlogic_susceptibility())
-        report.high_risk_patterns.extend(self._detect_valid_conv_boundary())
-        report.high_risk_patterns.extend(self._detect_early_linear_no_norm())
-        report.high_risk_patterns.extend(self._detect_relu_no_lipschitz())
-        report.high_risk_patterns.extend(self._detect_no_gradient_regularization())
-        report.high_risk_patterns.extend(
+        # Detect structural patterns
+        report.structural_patterns.extend(self._detect_concat_fusion())
+        report.structural_patterns.extend(self._detect_maxpool_amplification())
+        report.structural_patterns.extend(self._detect_linear_chains())
+        report.structural_patterns.extend(self._detect_large_fan_in())
+        report.structural_patterns.extend(self._detect_attention_patterns())
+        report.structural_patterns.extend(self._detect_residual_explosions())
+        report.structural_patterns.extend(self._detect_early_stride())
+        report.structural_patterns.extend(self._detect_batchnorm_pattern())
+        report.structural_patterns.extend(self._detect_global_pooling_pattern())
+        report.structural_patterns.extend(self._detect_fc_layer_pattern())
+        report.structural_patterns.extend(self._detect_shape_ops_pattern())
+        report.structural_patterns.extend(self._detect_saturating_activations())
+        report.structural_patterns.extend(self._detect_multimodal_fusion())
+        report.structural_patterns.extend(self._detect_shadowlogic_susceptibility())
+        report.structural_patterns.extend(self._detect_valid_conv_boundary())
+        report.structural_patterns.extend(self._detect_early_linear_no_norm())
+        report.structural_patterns.extend(self._detect_relu_no_lipschitz())
+        report.structural_patterns.extend(self._detect_no_gradient_regularization())
+        report.structural_patterns.extend(
             self._detect_deployment_context(num_graph_inputs=num_graph_inputs)
         )
         
@@ -505,7 +499,7 @@ class StructuralPatternAnalyzer:
         return max_chain
     
     # =========================================================================
-    # HIGH-RISK PATTERN DETECTION
+    # STRUCTURAL PATTERN DETECTION
     # =========================================================================
     
     def _detect_concat_fusion(self) -> List[StructuralPattern]:
@@ -525,7 +519,7 @@ class StructuralPatternAnalyzer:
             num_inputs = len(self.reverse_adjacency.get(node_id, []))
             
             if num_inputs >= 2:
-                risk = PatternRisk.HIGH if axis == 1 else PatternRisk.MEDIUM
+                weight = PatternWeight.STRONG if axis == 1 else PatternWeight.MODERATE
                 
                 patterns.append(StructuralPattern(
                     id=f"CONCAT-FUSION-{node_id}",
@@ -638,7 +632,7 @@ class StructuralPatternAnalyzer:
             visited.update(chain)
             
             if len(chain) >= 3:  # Chains of 3+ are concerning
-                risk = PatternRisk.CRITICAL if len(chain) >= 5 else PatternRisk.HIGH
+                weight = PatternWeight.PRIMARY if len(chain) >= 5 else PatternWeight.STRONG
                 
                 patterns.append(StructuralPattern(
                     id=f"LINEAR-CHAIN-{chain[0]}",
@@ -684,7 +678,7 @@ class StructuralPatternAnalyzer:
             
             if fan_in >= 4:  # 4+ inputs is concerning
                 op_type = self.nodes[node_id].get("op_type", "unknown")
-                risk = PatternRisk.HIGH if fan_in >= 6 else PatternRisk.MEDIUM
+                weight = PatternWeight.STRONG if fan_in >= 6 else PatternWeight.MODERATE
                 
                 patterns.append(StructuralPattern(
                     id=f"FAN-IN-{node_id}",
@@ -731,7 +725,7 @@ class StructuralPatternAnalyzer:
                     id=f"ATTENTION-{node_id}",
                     name=f"Attention Mechanism at {node_id}",
                     category=PatternCategory.AMPLIFICATION,
-                    risk=PatternRisk.CRITICAL,
+                    weight=PatternWeight.PRIMARY,
                     nodes_involved=[node_id],
                     description=f"Explicit attention operation that computes weighted "
                                f"combinations of values based on query-key similarity. "
@@ -768,7 +762,7 @@ class StructuralPatternAnalyzer:
                         id=f"IMPLICIT-ATTN-{node_id}",
                         name=f"Implicit Attention Pattern at {node_id}",
                         category=PatternCategory.AMPLIFICATION,
-                        risk=PatternRisk.HIGH,
+                        weight=PatternWeight.STRONG,
                         nodes_involved=[node_id] + successors,
                         description=f"MatMul followed by Softmax suggests attention-like "
                                    f"computation (Q*K^T -> softmax). This pattern has "
@@ -856,7 +850,7 @@ class StructuralPatternAnalyzer:
                         id=f"RESIDUAL-EXPLOSION-{chain[0]}",
                         name=f"Residual Chain Risk ({len(chain)} blocks)",
                         category=PatternCategory.GRADIENT_FLOW,
-                        risk=PatternRisk.HIGH,
+                        weight=PatternWeight.STRONG,
                         nodes_involved=chain,
                         description=f"Chain of {len(chain)} residual connections without "
                                    f"apparent normalization. Residual connections pass "
@@ -928,7 +922,7 @@ class StructuralPatternAnalyzer:
                     id=f"EARLY-STRIDE-{node_id}",
                     name=f"Early Strided Conv at {node_id}",
                     category=PatternCategory.FEATURE_EXTRACTION,
-                    risk=PatternRisk.MEDIUM,
+                    weight=PatternWeight.MODERATE,
                     nodes_involved=[node_id],
                     description=f"Strided convolution (stride={strides}) in early layers "
                                f"(depth {depth}/{max_depth}). Early striding creates aliasing "
@@ -957,7 +951,7 @@ class StructuralPatternAnalyzer:
         
         return patterns
     
-    def _detect_batchnorm_vuln(self) -> List[StructuralPattern]:
+    def _detect_batchnorm_pattern(self) -> List[StructuralPattern]:
         """
         Detect BatchNorm layers vulnerable to distribution shift attacks.
         """
@@ -987,7 +981,7 @@ class StructuralPatternAnalyzer:
         
         return patterns
     
-    def _detect_global_pooling_vuln(self) -> List[StructuralPattern]:
+    def _detect_global_pooling_pattern(self) -> List[StructuralPattern]:
         """Detect global pooling motifs (GAP_FC_HEAD registry)."""
         patterns = []
         gap_nodes = [
@@ -1013,7 +1007,7 @@ class StructuralPatternAnalyzer:
 
         return patterns
     
-    def _detect_fc_layer_vuln(self) -> List[StructuralPattern]:
+    def _detect_fc_layer_pattern(self) -> List[StructuralPattern]:
         """
         Detect final FC layers vulnerable to margin/logit attacks.
         """
@@ -1044,7 +1038,7 @@ class StructuralPatternAnalyzer:
                     id=f"FC-FINAL-{node_id}",
                     name=f"Final FC Layer (Logit Target) at {node_id}",
                     category=PatternCategory.ATTACK_SURFACE,
-                    risk=PatternRisk.HIGH,
+                    weight=PatternWeight.STRONG,
                     nodes_involved=[node_id],
                     description=f"Final fully connected layer '{node_id}' produces logits "
                                f"that directly determine classification. This is the ultimate "
@@ -1073,7 +1067,7 @@ class StructuralPatternAnalyzer:
         
         return patterns
     
-    def _detect_shape_ops_vuln(self) -> List[StructuralPattern]:
+    def _detect_shape_ops_pattern(self) -> List[StructuralPattern]:
         """
         Detect shape operations vulnerable to prompt injection and carrier attacks.
         """
@@ -1089,7 +1083,7 @@ class StructuralPatternAnalyzer:
                 id=f"SHAPE-OPS-VULN",
                 name=f"Shape Operation Chain ({len(shape_nodes)} ops)",
                 category=PatternCategory.ATTACK_SURFACE,
-                risk=PatternRisk.MEDIUM,
+                weight=PatternWeight.MODERATE,
                 nodes_involved=shape_nodes,
                 description=f"Model contains {len(shape_nodes)} shape/view operations "
                            f"that reorganize data without semantic validation. These can "
@@ -1134,7 +1128,7 @@ class StructuralPatternAnalyzer:
                 id=f"SATURATING-ACT-VULN",
                 name=f"Saturating Activations ({len(saturating_nodes)} layers)",
                 category=PatternCategory.GRADIENT_FLOW,
-                risk=PatternRisk.MEDIUM,
+                weight=PatternWeight.MODERATE,
                 nodes_involved=saturating_nodes,
                 description=f"Model contains {len(saturating_nodes)} saturating activation "
                            f"functions (sigmoid, tanh, etc.) that cause gradient masking. "
@@ -1200,7 +1194,7 @@ class StructuralPatternAnalyzer:
                     id=f"MULTIMODAL-{node_id}",
                     name=f"Multimodal Fusion Point at {node_id}",
                     category=PatternCategory.PERTURBATION_FUSION,
-                    risk=PatternRisk.HIGH,
+                    weight=PatternWeight.STRONG,
                     nodes_involved=[node_id] + predecessors,
                     description=f"Potential multimodal fusion at '{node_id}' combining "
                                f"{len(predecessors)} input streams. Cross-modal fusion "
@@ -1255,7 +1249,7 @@ class StructuralPatternAnalyzer:
                 id="SHADOWLOGIC-COND-OPS",
                 name=f"ShadowLogic Risk: Conditional Operations ({len(conditional_nodes)} nodes)",
                 category=PatternCategory.ATTACK_SURFACE,
-                risk=PatternRisk.CRITICAL,
+                weight=PatternWeight.PRIMARY,
                 nodes_involved=conditional_nodes,
                 description=f"Model contains {len(conditional_nodes)} conditional operations "
                            f"({', '.join(set(self.nodes[n].get('op_type', '?') for n in conditional_nodes))}). "
@@ -1271,7 +1265,7 @@ class StructuralPatternAnalyzer:
                     in the computational graph.
                 """,
                 research_notes="""
-                    CRITICAL: Audit every conditional operation. Verify the condition
+                    Review every conditional operation. Verify the condition
                     corresponds to legitimate model logic. Suspicious patterns:
                     - Conditions checking specific input values/patterns
                     - Conditions with constant comparisons
@@ -1299,7 +1293,7 @@ class StructuralPatternAnalyzer:
                 id="SHADOWLOGIC-CAPACITY",
                 name=f"ShadowLogic Risk: High Parameter Capacity ({len(large_layers)} linear layers)",
                 category=PatternCategory.ATTACK_SURFACE,
-                risk=PatternRisk.HIGH,
+                weight=PatternWeight.STRONG,
                 nodes_involved=large_layers[:20],  # Limit to first 20
                 description=f"Model has {len(large_layers)} linear layers (Conv/FC/MatMul) "
                            f"providing substantial capacity for hidden malicious subnets. "
@@ -1335,7 +1329,7 @@ class StructuralPatternAnalyzer:
                 id="SHADOWLOGIC-DEPTH",
                 name=f"ShadowLogic Risk: Deep Architecture (depth={max_depth})",
                 category=PatternCategory.ATTACK_SURFACE,
-                risk=PatternRisk.MEDIUM,
+                weight=PatternWeight.MODERATE,
                 nodes_involved=[],
                 description=f"Deep architecture with {max_depth} layers provides many "
                            f"opportunities for hiding malicious subnets. Deeper models "
@@ -1402,7 +1396,7 @@ class StructuralPatternAnalyzer:
                 if self.topology_config.is_early(depths.get(n, 0), max_depth)
             ]
             
-            risk = PatternRisk.HIGH if early_valid else PatternRisk.MEDIUM
+            weight = PatternWeight.STRONG if early_valid else PatternWeight.MODERATE
             
             patterns.append(StructuralPattern(
                 id="VALID-CONV-BOUNDARY",
@@ -1537,7 +1531,7 @@ class StructuralPatternAnalyzer:
                 id="EARLY-LINEAR-NO-NORM",
                 name=f"Attack-Friendly Early Layers: {len(linear_chains_no_norm)} linear chains without normalization",
                 category=PatternCategory.GRADIENT_FLOW,
-                risk=PatternRisk.HIGH,
+                weight=PatternWeight.STRONG,
                 nodes_involved=all_nodes,
                 description=f"Found {len(linear_chains_no_norm)} chains of linear operations "
                            f"(longest: {longest_chain} ops) in early layers without interleaved "
@@ -1677,7 +1671,7 @@ class StructuralPatternAnalyzer:
                 id="RELU-NO-LIPSCHITZ",
                 name=f"Unbounded ReLU Boundaries ({len(relu_with_no_constraint)} nodes)",
                 category=PatternCategory.GRADIENT_FLOW,
-                risk=PatternRisk.MEDIUM,
+                weight=PatternWeight.MODERATE,
                 nodes_involved=relu_with_no_constraint[:20],  # Limit output
                 description=f"Found {len(relu_with_no_constraint)} ReLU activations after "
                            f"linear layers without apparent Lipschitz constraints (no adjacent "
@@ -1746,7 +1740,7 @@ class StructuralPatternAnalyzer:
                 id="NO-GRADIENT-REG",
                 name="No Gradient Regularization Detected",
                 category=PatternCategory.GRADIENT_FLOW,
-                risk=PatternRisk.MEDIUM,
+                weight=PatternWeight.MODERATE,
                 nodes_involved=[],
                 description=f"Model with {len(self.nodes)} nodes has no apparent gradient "
                            f"regularization (no Dropout, DropPath, or noise layers detected). "
@@ -1787,7 +1781,7 @@ class StructuralPatternAnalyzer:
                 id="GRADIENT-REG-PRESENT",
                 name=f"Gradient Regularization Present ({total_regularization} mechanisms)",
                 category=PatternCategory.ROBUSTNESS,
-                risk=PatternRisk.POSITIVE,
+                weight=PatternWeight.POSITIVE,
                 nodes_involved=dropout_nodes + noise_nodes + stochastic_nodes,
                 description=f"Model includes {total_regularization} gradient regularization "
                            f"mechanisms (Dropout: {len(dropout_nodes)}, Noise: {len(noise_nodes)}, "
@@ -1846,7 +1840,7 @@ class StructuralPatternAnalyzer:
                     id=f"EARLY-DOWN-{node_id}",
                     name=f"Early Downsampling at {node_id}",
                     category=PatternCategory.ROBUSTNESS,
-                    risk=PatternRisk.POSITIVE,
+                    weight=PatternWeight.POSITIVE,
                     nodes_involved=[node_id],
                     description=f"Spatial downsampling in early layers (depth {depths.get(node_id, 0)}/{max_depth}). "
                                f"This reduces the input dimensionality early, limiting the "
@@ -1904,7 +1898,7 @@ class StructuralPatternAnalyzer:
                 id=f"AVG-POOL-{node_id}",
                 name=f"Average Pooling at {node_id}",
                 category=PatternCategory.ROBUSTNESS,
-                risk=PatternRisk.POSITIVE,
+                weight=PatternWeight.POSITIVE,
                 nodes_involved=[node_id],
                 description=f"Average pooling distributes gradients uniformly and smooths "
                            f"perturbations by averaging. This provides natural robustness "
@@ -1947,7 +1941,7 @@ class StructuralPatternAnalyzer:
                     id=f"BOTTLENECK-{node_id}",
                     name=f"Bottleneck Conv at {node_id}",
                     category=PatternCategory.ROBUSTNESS,
-                    risk=PatternRisk.POSITIVE,
+                    weight=PatternWeight.POSITIVE,
                     nodes_involved=[node_id],
                     description=f"1x1 convolution that performs channel-wise projection. "
                                f"If this reduces dimensionality, it creates an information "
@@ -2001,7 +1995,7 @@ class StructuralPatternAnalyzer:
                 id="REDUCED-EARLY-DEPTH",
                 name="Reduced Early Layer Complexity",
                 category=PatternCategory.ROBUSTNESS,
-                risk=PatternRisk.POSITIVE,
+                weight=PatternWeight.POSITIVE,
                 nodes_involved=[],
                 description=f"Model has fewer operations in early layers ({early_count}) "
                            f"compared to late layers ({late_count}). This pattern processes "
@@ -2027,7 +2021,7 @@ class StructuralPatternAnalyzer:
     # =========================================================================
     
     def _map_attack_surfaces(self) -> List[AttackSurfaceMapping]:
-        """Map model components to attack classes based on vulnerability taxonomy."""
+        """Map model components to attack classes from literature taxonomy."""
         surfaces = []
         
         # Input tensors -> adversarial image injection
@@ -2403,7 +2397,7 @@ class StructuralPatternAnalyzer:
         """
         Calculate overall structural attack-surface score (0-100).
         
-        Score reflects how exploitable the model architecture is,
+        Score reflects structural attack-surface density in the graph,
         NOT just how many patterns exist. Uses weighted scoring
         with diminishing returns for repeated pattern types.
         """
@@ -2411,22 +2405,22 @@ class StructuralPatternAnalyzer:
         pattern_type_counts = {}
         
         # Count patterns by category for diminishing returns
-        for pattern in report.high_risk_patterns:
+        for pattern in report.structural_patterns:
             cat = pattern.category.value
             pattern_type_counts[cat] = pattern_type_counts.get(cat, 0) + 1
         
         # Score with diminishing returns per category
-        for pattern in report.high_risk_patterns:
+        for pattern in report.structural_patterns:
             cat = pattern.category.value
             count = pattern_type_counts.get(cat, 1)
             # First instance of a pattern type has full impact, subsequent reduced
             diminishing_factor = 1.0 / (1 + 0.3 * (count - 1))
             
-            if pattern.risk == PatternRisk.CRITICAL:
+            if pattern.weight == PatternWeight.PRIMARY:
                 base_score += 20 * diminishing_factor
-            elif pattern.risk == PatternRisk.HIGH:
+            elif pattern.weight == PatternWeight.STRONG:
                 base_score += 10 * diminishing_factor
-            elif pattern.risk == PatternRisk.MEDIUM:
+            elif pattern.weight == PatternWeight.MODERATE:
                 base_score += 4 * diminishing_factor
         
         # Graph metrics bonuses (not penalties, but additional risk indicators)
@@ -2449,13 +2443,13 @@ class StructuralPatternAnalyzer:
         """
         Calculate robustness score (0-100).
         
-        Robustness score is INVERSELY related to vulnerability but also
-        considers positive defensive features. A high vulnerability score
+        Robustness score is inversely related to structural score but also
+        considers positive defensive features. A high structural score
         necessarily limits the maximum robustness score.
         """
         vuln_score = report.structural_score
         
-        # Maximum possible robustness decreases as vulnerability increases
+        # Maximum possible robustness decreases as structural score increases
         # At vuln=0, max robustness=100. At vuln=100, max robustness=20.
         max_possible = 100 - vuln_score * 0.8
         
@@ -2466,7 +2460,7 @@ class StructuralPatternAnalyzer:
         robustness_bonus = 0.0
         indicator_count = 0
         for pattern in report.robustness_indicators:
-            if pattern.risk == PatternRisk.POSITIVE:
+            if pattern.weight == PatternWeight.POSITIVE:
                 indicator_count += 1
                 # Diminishing returns after first few indicators
                 robustness_bonus += 6 / (1 + 0.3 * max(0, indicator_count - 2))
@@ -2483,8 +2477,8 @@ class StructuralPatternAnalyzer:
             robustness_bonus += 5
         
         # Absence of critical risks adds to robustness
-        critical_count = sum(1 for p in report.high_risk_patterns if p.risk == PatternRisk.CRITICAL)
-        if critical_count == 0:
+        primary_count = sum(1 for p in report.structural_patterns if p.risk == PatternWeight.PRIMARY)
+        if primary_count == 0:
             robustness_bonus += 10
         
         # Final score cannot exceed max_possible
@@ -2505,12 +2499,12 @@ def generate_structural_report_text(report: StructuralAnalysisReport) -> str:
         f"Longest Linear Chain: {report.longest_linear_chain}",
     ]
 
-    if report.high_risk_patterns:
+    if report.structural_patterns:
         lines.append("\n" + "-" * 70)
         lines.append("STRUCTURAL PATTERNS")
         lines.append("-" * 70)
 
-        for pattern in sorted(report.high_risk_patterns, key=lambda p: p.name):
+        for pattern in sorted(report.structural_patterns, key=lambda p: p.name):
             lines.append(f"\n{pattern.name}")
             if pattern.registry_id:
                 lines.append(f"  Registry ID: {pattern.registry_id}")
