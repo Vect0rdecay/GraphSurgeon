@@ -94,6 +94,7 @@ prompt-*.md
 *-deliberation*
 *-internal*
 *EXPOSURE_AUDIT*
+*detection_rationale*
 PRE_PUSH*.md
 TODO.private*
 TODO.local*

@@ -74,6 +74,18 @@ CHAIN_DETECTION_RATIONALE: dict[str, str] = {
         "show universal scene-independent patches; Karmon et al. (LaVAN) show ~2% area suffices. "
         "Architecture enables the attack class; training and defenses determine exploitability."
     ),
+    "CHAIN-PHYSICAL-WORLD-ATTACK": (
+        "Detect ALIASING_DOWNSAMPLE (stride-2 Conv/Pool without preceding blur) together with "
+        "NORMALIZER (BatchNorm with fixed running statistics). High-frequency perturbations can "
+        "fold through strided ops; fixed BN stats amplify illumination and capture-pipeline shift. "
+        "Indexes EOT and RP2 physical-world literature. Training and deployment context determine "
+        "whether attacks succeed."
+    ),
+    "CHAIN-COMPOUND-PHYSICAL-PATCH": (
+        "Require both GAP_FC_HEAD and ALIASING_DOWNSAMPLE: a classifier head that global-pools "
+        "spatial features plus early aliasing-prone downsampling. Indexes compound physical-world "
+        "patch demonstrations where transformation robustness and global aggregation interact."
+    ),
     "CHAIN-SINGLE-MODALITY-VISION": (
         "Require SINGLE_MODALITY_INPUT and at least one of GAP_FC_HEAD or OBJECTNESS_HEAD. "
         "Thermal and IR attacks operate outside the DAG; this chain links deployment mismatch "

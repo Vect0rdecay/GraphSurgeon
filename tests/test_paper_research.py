@@ -9,7 +9,6 @@ import pytest
 from graph_surgeon.taxonomy.gadget_registry import GADGET_REGISTRY
 from graph_surgeon.taxonomy.paper_research import (
     _ATTACK_RESEARCH_NOTES,
-    _DETECTION_RATIONALE,
     _TAXONOMY_JSON,
     extract_paper_section,
     format_paper_catalog_block,
@@ -25,7 +24,18 @@ from graph_surgeon.taxonomy.research_coverage import (
 def test_bundled_research_files_ship_with_package():
     assert _TAXONOMY_JSON.is_file()
     assert _ATTACK_RESEARCH_NOTES.is_file()
-    assert _DETECTION_RATIONALE.is_file()
+
+
+def test_detection_rationale_not_shipped():
+    import subprocess
+
+    data_dir = Path(__file__).resolve().parents[1] / "graph_surgeon" / "taxonomy" / "data"
+    tracked = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", str(data_dir / "detection_rationale.md")],
+        capture_output=True,
+        cwd=data_dir.parents[2],
+    )
+    assert tracked.returncode != 0
 
 
 def test_paper_section_loaded_from_bundle_not_external():
@@ -42,10 +52,12 @@ def test_catalog_paper_block_uses_bundled_notes():
     assert "Research notes:" in block
 
 
-def test_chain_rationale_from_bundled_detection_doc():
+def test_chain_rationale_from_chain_catalog():
     text = extract_chain_rationale("CHAIN-PATCH-ATTACK-SURFACE")
     assert text is not None
-    assert "Patch Attack" in text or "GAP" in text
+    assert "GlobalAveragePool" in text or "GAP" in text
+    assert "CRITICAL" not in text
+    assert "Exploit Chain" not in text
 
 
 def test_paper_section_71_excludes_cross_cutting_meta():

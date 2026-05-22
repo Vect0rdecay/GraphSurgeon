@@ -8,10 +8,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from graph_surgeon.taxonomy.chain_catalog import CHAIN_DETECTION_RATIONALE
+
 _DATA_DIR = Path(__file__).parent / "data"
 _TAXONOMY_JSON = _DATA_DIR / "papers_taxonomy.json"
 _ATTACK_RESEARCH_NOTES = _DATA_DIR / "attack_research_notes.md"
-_DETECTION_RATIONALE = _DATA_DIR / "detection_rationale.md"
 
 # Slugs not in numeric taxonomy tables (registry-only identifiers)
 SLUG_ALIASES: Dict[str, Dict[str, str]] = {
@@ -56,10 +57,6 @@ ARXIV_BY_NUMERIC_ID: Dict[str, str] = {
     "111": "https://arxiv.org/abs/2506.18516",
 }
 
-_CHAIN_RATIONALE_HEADINGS: Dict[str, str] = {
-    "CHAIN-PATCH-ATTACK-SURFACE": "Chain 1: Patch Attack",
-    "CHAIN-PHYSICAL-WORLD-ATTACK": "Chain 2: Physical-World",
-}
 
 # Research-doc scaffolding (project logs, phase plans) — not for catalog output.
 _CATALOG_EXCLUDED_MARKERS: tuple[str, ...] = (
@@ -98,13 +95,6 @@ def _attack_research_notes_text() -> Optional[str]:
     return None
 
 
-@lru_cache(maxsize=1)
-def _detection_rationale_text() -> Optional[str]:
-    if _DETECTION_RATIONALE.exists():
-        return _DETECTION_RATIONALE.read_text(encoding="utf-8")
-    return None
-
-
 def _sanitize_catalog_research_text(body: str) -> str:
     """Drop project meta, phase logs, and unrelated research blocks."""
     cut_at = len(body)
@@ -139,35 +129,9 @@ def extract_paper_section(numeric_id: str) -> Optional[str]:
     return f"{header}\n{body}"
 
 
-_RATIONALE_EXCLUDED_LINE = re.compile(
-    r"(?i)(severity\s+justification|cvss|flag\s+(this|as)\s+(a\s+)?vulnerab|"
-    r"\bCRITICAL\b|\bHIGH\b\s+tier|risk\s+score|exploitability\s+score)"
-)
-
-
-def _sanitize_chain_rationale(text: str) -> str:
-    """Drop maintainer severity tiers and legacy vulnerability framing from catalog output."""
-    kept: list[str] = []
-    for line in text.splitlines():
-        if _RATIONALE_EXCLUDED_LINE.search(line):
-            continue
-        kept.append(line)
-    return "\n".join(kept).strip()
-
-
 def extract_chain_rationale(chain_id: str) -> Optional[str]:
-    text = _detection_rationale_text()
-    if not text:
-        return None
-    needle = _CHAIN_RATIONALE_HEADINGS.get(chain_id)
-    if not needle:
-        return None
-    pattern = rf"## {re.escape(needle)}.*?(?=\n## |\Z)"
-    m = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
-    if not m:
-        return None
-    body = _sanitize_chain_rationale(m.group(0).strip())
-    return body or None
+    """Return catalog-safe chain detection rationale from chain_catalog."""
+    return CHAIN_DETECTION_RATIONALE.get(chain_id)
 
 
 def resolve_paper(slug: str) -> Dict[str, Any]:
