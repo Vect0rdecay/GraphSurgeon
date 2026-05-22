@@ -1,11 +1,10 @@
 """
-ONNX Model Parser for Graph Reverse Engineering
+ONNX Model Parser for GraphSurgeon
 
-Parses ONNX models and extracts the DAG structure for security analysis.
+Parses ONNX models and extracts the DAG structure for graph analysis.
 """
 
 from typing import Dict, List, Tuple, Optional, Any
-from graph_surgeon.graph.surgeon import GraphSurgeon
 from dataclasses import dataclass
 import struct
 
@@ -39,15 +38,23 @@ class ONNXGraph:
     outputs: List[ONNXTensor]
     initializers: Dict[str, ONNXTensor]
     value_info: Dict[str, ONNXTensor]
-    topology: Optional[Any] = None
+    _raw_model: Any = None
+
+    @property
+    def topology(self):
+        """Graph topology via GraphSurgeon (depth, early/middle/late)."""
+        if self._raw_model is None:
+            return None
+        from graph_surgeon.graph.surgeon import GraphSurgeon
+        return GraphSurgeon(verbose=False).get_graph_topology(self._raw_model.graph)
 
 
 class ONNXGraphParser:
     """
-    Parser for ONNX models focused on DAG structure extraction.
+    Parser for ONNX models focused on graph analysis.
     
     Extracts the DAG structure, node attributes, and weight information
-    needed for vulnerability analysis.
+    needed for structural motif analysis.
     """
     
     # ONNX data type mapping
@@ -162,20 +169,15 @@ class ONNXGraphParser:
                 dtype=dtype
             )
         
-        onnx_graph = ONNXGraph(
+        return ONNXGraph(
             name=graph.name or "main",
             nodes=nodes,
             inputs=inputs,
             outputs=outputs,
             initializers=initializers,
             value_info=value_info,
+            _raw_model=model,
         )
-        try:
-            surgeon = GraphSurgeon(verbose=False)
-            onnx_graph.topology = surgeon.get_graph_topology(graph)
-        except Exception:
-            onnx_graph.topology = None
-        return onnx_graph
     
     def _parse_attribute(self, attr) -> Any:
         """Parse an ONNX attribute to Python value."""
@@ -362,9 +364,9 @@ class ONNXGraphParser:
         return node_profiles, edges, graph_info
 
 
-def analyze_model_motifs(filepath: str, output_path: str = None, verbose: bool = False):
+def analyze_onnx_graph(filepath: str, output_path: str = None, verbose: bool = False):
     """
-    Main entry point for ONNX model security analysis.
+    Main entry point for ONNX model graph analysis.
     
     Args:
         filepath: Path to ONNX model file
@@ -372,7 +374,7 @@ def analyze_model_motifs(filepath: str, output_path: str = None, verbose: bool =
         verbose: Print detailed output
     
     Returns:
-        ModelSecurityReport object
+        ModelMotifReport object
     """
     from graph_surgeon.analysis.motifs import StructuralMotifAnalyzer, export_report_json
     
@@ -397,7 +399,7 @@ def analyze_model_motifs(filepath: str, output_path: str = None, verbose: bool =
     if verbose:
         print(f"\nMotif Analysis Complete")
         print(f"  Overall Risk Score: {report.overall_risk_score:.1f}/100")
-        print(f"  Total Structural Findings: {len(report.vulnerabilities)}")
+        print(f"  Total structural findings: {len(report.structural_findings)}")
     
     # Export if requested
     if output_path:
@@ -415,7 +417,7 @@ def quick_scan(filepath: str) -> str:
     
     Returns a brief text summary of findings.
     """
-    report = analyze_model_motifs(filepath, verbose=False)
+    report = analyze_onnx_graph(filepath, verbose=False)
     
     lines = [
         f"Motif Scan: {filepath}",
@@ -429,11 +431,11 @@ def quick_scan(filepath: str) -> str:
         f"  - Model Extraction Risk: {report.extraction_risk_score:.1f}",
         f"  - Privacy Risk: {report.privacy_risk_score:.1f}",
         f"",
-        f"Findings: {len(report.vulnerabilities)} structural findings",
+        f"Findings: {len(report.structural_findings)} structural_findings",
     ]
     
     # Add critical/high findings
-    critical = [v for v in report.vulnerabilities if v.severity.value in ["critical", "high"]]
+    critical = [v for v in report.structural_findings if v.severity.value in ["critical", "high"]]
     if critical:
         lines.append(f"\nCritical/High Severity Issues:")
         for v in critical[:5]:

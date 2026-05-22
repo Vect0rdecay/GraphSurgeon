@@ -5,13 +5,8 @@ Run with: pytest tests/test_graph_surgeon.py -v
 """
 
 import pytest
-import sys
-import os
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from graph_surgeon import GraphSurgeon
+from graph_surgeon.graph.surgeon import GraphSurgeon
 from graph_surgeon.graph.validation import GraphValidationLevel as ValidationLevel
 
 try:
@@ -312,7 +307,7 @@ class TestGetGraphTopology:
     @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
     def test_topology_positions(self, simple_model):
         """Should classify nodes into early/middle/late positions."""
-        from graph_surgeon.graph.topology import LayerPosition
+        from graph_surgeon.graph.surgeon import LayerPosition
         
         surgeon = GraphSurgeon(verbose=False)
         topology = surgeon.get_graph_topology(simple_model.graph)
@@ -328,7 +323,7 @@ class TestGetGraphTopology:
     @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
     def test_topology_early_layers(self, simple_model):
         """conv1 and relu1 should be in early layers."""
-        from graph_surgeon.graph.topology import LayerPosition
+        from graph_surgeon.graph.surgeon import LayerPosition
         
         surgeon = GraphSurgeon(verbose=False)
         topology = surgeon.get_graph_topology(simple_model.graph)
@@ -340,7 +335,7 @@ class TestGetGraphTopology:
     @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
     def test_topology_late_layers(self, simple_model):
         """gap and flatten should be in late layers."""
-        from graph_surgeon.graph.topology import LayerPosition
+        from graph_surgeon.graph.surgeon import LayerPosition
         
         surgeon = GraphSurgeon(verbose=False)
         topology = surgeon.get_graph_topology(simple_model.graph)
@@ -577,6 +572,80 @@ class TestShapeInference:
         assert 'unknown' in msg.lower()
 
 
+class TestMetadata:
+    """Tests for metadata methods."""
+    
+    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
+    def test_add_and_get_metadata(self, simple_model):
+        """Should add and retrieve metadata."""
+        surgeon = GraphSurgeon(verbose=False)
+        
+        surgeon.add_metadata(simple_model, 'test_key', 'test_value')
+        
+        value = surgeon.get_metadata(simple_model, 'test_key')
+        assert value == 'test_value'
+    
+    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
+    def test_get_nonexistent_metadata(self, simple_model):
+        """Should return None for nonexistent metadata."""
+        surgeon = GraphSurgeon(verbose=False)
+        
+        value = surgeon.get_metadata(simple_model, 'nonexistent_key')
+        assert value is None
+    
+    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
+    def test_record_graft(self, simple_model):
+        """Should record graft in metadata."""
+        surgeon = GraphSurgeon(verbose=False)
+        
+        surgeon.record_graft(
+            simple_model, 
+            'INSERT_MAXPOOL', 
+            'conv1_out',
+            details={'kernel': [2, 2]}
+        )
+        
+        history = surgeon.get_graft_history(simple_model)
+        assert len(history) == 1
+        assert history[0]['graft_type'] == 'INSERT_MAXPOOL'
+        assert history[0]['target_node'] == 'conv1_out'
+        assert history[0]['details']['kernel'] == [2, 2]
+    
+    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
+    def test_record_multiple_grafts(self, simple_model):
+        """Should record multiple grafts in order."""
+        surgeon = GraphSurgeon(verbose=False)
+        
+        surgeon.record_graft(simple_model, 'GRAFT_A', 'node1')
+        surgeon.record_graft(simple_model, 'GRAFT_B', 'node2')
+        surgeon.record_graft(simple_model, 'GRAFT_C', 'node3')
+        
+        history = surgeon.get_graft_history(simple_model)
+        assert len(history) == 3
+        assert history[0]['graft_type'] == 'GRAFT_A'
+        assert history[1]['graft_type'] == 'GRAFT_B'
+        assert history[2]['graft_type'] == 'GRAFT_C'
+    
+    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
+    def test_graft_history_empty(self, simple_model):
+        """Should return empty list for model with no grafts."""
+        surgeon = GraphSurgeon(verbose=False)
+        
+        history = surgeon.get_graft_history(simple_model)
+        assert history == []
+    
+    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
+    def test_graft_has_timestamp(self, simple_model):
+        """Graft records should have timestamp."""
+        surgeon = GraphSurgeon(verbose=False)
+        
+        surgeon.record_graft(simple_model, 'TEST_GRAFT', 'test_node')
+        
+        history = surgeon.get_graft_history(simple_model)
+        assert 'timestamp' in history[0]
+        assert len(history[0]['timestamp']) > 0
+
+
 class TestExistingMethods:
     """Tests for pre-existing GraphSurgeon methods to ensure they still work."""
     
@@ -626,7 +695,7 @@ class TestInsertNodeBefore:
     @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
     def test_insert_before_conv(self, simple_model):
         """Should insert a node before a target node."""
-        from conftest import create_maxpool_node
+        from graph_surgeon.graph.surgeon import create_maxpool_node
         
         surgeon = GraphSurgeon(verbose=False)
         
@@ -649,7 +718,7 @@ class TestInsertNodeBefore:
     @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
     def test_insert_before_nonexistent(self, simple_model):
         """Should fail when target doesn't exist."""
-        from conftest import create_maxpool_node
+        from graph_surgeon.graph.surgeon import create_maxpool_node
         
         surgeon = GraphSurgeon(verbose=False)
         maxpool = create_maxpool_node('mp', 'x', 'y')
@@ -666,7 +735,7 @@ class TestReplaceNode:
     @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
     def test_replace_maxpool_with_avgpool(self, simple_model):
         """Should replace MaxPool with AvgPool."""
-        from conftest import create_avgpool_node
+        from graph_surgeon.graph.surgeon import create_avgpool_node
         
         surgeon = GraphSurgeon(verbose=False)
         
@@ -698,7 +767,7 @@ class TestReplaceNode:
     @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
     def test_replace_nonexistent(self, simple_model):
         """Should fail when node doesn't exist."""
-        from conftest import create_maxpool_node
+        from graph_surgeon.graph.surgeon import create_maxpool_node
         
         surgeon = GraphSurgeon(verbose=False)
         maxpool = create_maxpool_node('mp', 'x', 'y')
@@ -815,7 +884,7 @@ class TestCompareGraphs:
     @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
     def test_compare_with_addition(self, simple_model):
         """Should detect added nodes."""
-        from conftest import create_maxpool_node
+        from graph_surgeon.graph.surgeon import create_maxpool_node
         
         surgeon = GraphSurgeon(verbose=False)
         
@@ -847,6 +916,62 @@ class TestCompareGraphs:
         
         assert 'relu2' in diff['nodes_removed']
         assert '-1' in diff['summary']
+
+
+class TestCreateConvNode:
+    """Tests for create_conv_node() helper."""
+    
+    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
+    def test_create_conv_basic(self):
+        """Should create a Conv node with weights."""
+        from graph_surgeon.graph.surgeon import create_conv_node
+        
+        node, inits = create_conv_node(
+            'test_conv', 'input', 'output',
+            in_channels=3, out_channels=64
+        )
+        
+        assert node.op_type == 'Conv'
+        assert node.name == 'test_conv'
+        assert len(inits) == 1  # weights only (no bias)
+    
+    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
+    def test_create_conv_identity_init(self):
+        """Identity init should create near-identity convolution."""
+        from graph_surgeon.graph.surgeon import create_conv_node
+        import numpy as np
+        
+        node, inits = create_conv_node(
+            'id_conv', 'input', 'output',
+            in_channels=64, out_channels=64,
+            kernel_shape=[3, 3],
+            weight_init='identity'
+        )
+        
+        # Check weights have identity-like structure
+        weights = np.frombuffer(inits[0].raw_data, dtype=np.float32)
+        weights = weights.reshape(64, 64, 3, 3)
+        
+        # Center of kernel for each channel should be 1
+        assert weights[0, 0, 1, 1] == 1.0
+        assert weights[1, 1, 1, 1] == 1.0
+    
+    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
+    def test_create_conv_small_init(self):
+        """Small init should have small weight values."""
+        from graph_surgeon.graph.surgeon import create_conv_node
+        import numpy as np
+        
+        node, inits = create_conv_node(
+            'small_conv', 'input', 'output',
+            in_channels=3, out_channels=64,
+            weight_init='small'
+        )
+        
+        weights = np.frombuffer(inits[0].raw_data, dtype=np.float32)
+        
+        # Weights should be small (around 0.01 scale)
+        assert np.abs(weights).max() < 0.1
 
 
 if __name__ == '__main__':

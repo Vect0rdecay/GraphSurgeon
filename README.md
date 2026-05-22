@@ -2,16 +2,17 @@
 
 GraphSurgeon helps reverse engineers and ML researchers **inspect, map, and experiment on ONNX computational DAGs**: topology (stem vs head), structural motifs, operator reference, execution flow, and **counterfactual graph edits** with validation.
 
-This is not a vulnerability scanner, exploitability scorer, or red-team grafting tool. Structural motifs describe **attack landscape** (what perturbation classes are architecturally plausible). They do not predict attack success rate, robustness, or exploitability.
+It is not a vulnerability scanner, exploitability scorer, or red-team grafting tool.
 
 ## Install
 
 ```bash
+cd graph-surgeon
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"
 ```
 
-Optional behavioral characterization:
+Optional runtime characterization:
 
 ```bash
 .venv/bin/python -m pip install -e ".[behavior]"
@@ -23,11 +24,9 @@ Optional behavioral characterization:
 graph-surgeon inspect model.onnx
 graph-surgeon topology model.onnx
 graph-surgeon motifs model.onnx -o report.json
-graph-surgeon patterns model.onnx
 graph-surgeon flow model.onnx
-graph-surgeon catalog --summary
+graph-surgeon catalog --category adversarial_perturbation
 graph-surgeon operators --op Conv
-graph-surgeon edit remove-subgraph model.onnx --nodes relu2 -o edited.onnx
 graph-surgeon edit validate edited.onnx --level runnable
 graph-surgeon diff baseline.onnx edited.onnx
 ```
@@ -46,20 +45,44 @@ stem = topo.by_position[LayerPosition.EARLY]
 head = topo.by_position[LayerPosition.LATE]
 ```
 
-## Integration tests
+Counterfactual edit:
 
-Set `GRAPH_SURGEON_FIXTURE_ROOT` to a directory containing RobustBench ONNX models (default: `../nn_security_analyzer/robustbench_validation`). See [tests/README.md](tests/README.md).
+```python
+result = surgeon.remove_subgraph(model, node_names=["block_a", "block_b"])
+check = surgeon.validate(model, level=GraphValidationLevel.RUNNABLE)
+```
 
-## Compared to Netron
+## What motifs mean
 
-Netron visualizes a single graph interactively. GraphSurgeon adds programmatic topology classification, structural motif detection, pattern analysis, counterfactual edits with validation, and batch-friendly CLI output for reverse-engineering workflows.
+Structural motifs describe **attack landscape** (what perturbation classes are structurally plausible on this graph). They do **not** predict attack success rate, robustness, or exploitability. Training and deployment context determine whether attacks succeed.
 
-## Limitations
+## Comparison to Netron
 
-Architecture and motifs describe attack landscape, not exploitability. Runtime probes (`graph-surgeon[behavior]`) characterize observed behavior on a given checkpoint; they are not a security grade.
+Netron visualizes a single graph. GraphSurgeon adds depth-based topology (early/middle/late), motif catalog cross-reference, batch diff across edited graphs, and validate-after-edit workflows for reverse engineering.
+
+## Tests
+
+Unit tests (no large ONNX files):
+
+```bash
+.venv/bin/python -m pytest tests/test_graph_surgeon.py -v
+```
+
+Integration tests (RobustBench corpus via env var):
+
+```bash
+export GRAPH_SURGEON_FIXTURE_ROOT=/home/s0crates/nn_security_analyzer/robustbench_validation
+.venv/bin/python -m pytest tests/ -v -m integration
+```
+
+See `tests/README.md`.
 
 ## Ecosystem
 
-- **Carcinoma**: offensive grafting; syncs shared GraphSurgeon modules (see [SYNC.md](SYNC.md))
+- **Carcinoma**: offensive grafting; syncs graph primitives from GraphSurgeon (`SYNC.md`)
+- **nn_security_analyzer**: frozen reference tree; ONNX fixtures remain on disk for local integration tests
 - **Silent Scalpel**: research publications (not shipped in this repo)
-- **nn_security_analyzer**: legacy source dir kept on disk for fixtures and reference
+
+## License
+
+MIT

@@ -1,5 +1,5 @@
 """
-Structural Pattern Analysis for ONNX DAG Reverse Engineering
+Structural Pattern Analysis for Adversarial ML Security Research
 
 Detects high-risk architectural patterns and robustness indicators
 in neural network DAGs that are relevant for adversarial attacks.
@@ -16,8 +16,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional, Set, Tuple, Any
 from collections import defaultdict
-
-from graph_surgeon.graph.topology import GraphTopologyConfig
 
 
 class PatternRisk(Enum):
@@ -83,7 +81,7 @@ class StructuralAnalysisReport:
     longest_linear_chain: int = 0
     
     # Scores
-    structural_score: float = 0.0   # Higher = more structural attack surface
+    vulnerability_score: float = 0.0   # Higher = more vulnerable
     robustness_score: float = 0.0      # Higher = more robust
     
     # Research workflow outputs
@@ -379,7 +377,7 @@ class StructuralPatternAnalyzer:
         report.recommended_defense_points = self._recommend_defense_points()
         
         # Calculate scores
-        report.structural_score = self._calculate_structural_score(report)
+        report.vulnerability_score = self._calculate_vulnerability_score(report)
         report.robustness_score = self._calculate_robustness_score(report)
         
         return report
@@ -2318,7 +2316,7 @@ class StructuralPatternAnalyzer:
     # SCORING
     # =========================================================================
     
-    def _calculate_structural_score(self, report: StructuralAnalysisReport) -> float:
+    def _calculate_vulnerability_score(self, report: StructuralAnalysisReport) -> float:
         """
         Calculate overall vulnerability score (0-100).
         
@@ -2372,7 +2370,7 @@ class StructuralPatternAnalyzer:
         considers positive defensive features. A high vulnerability score
         necessarily limits the maximum robustness score.
         """
-        vuln_score = report.structural_score
+        vuln_score = report.vulnerability_score
         
         # Maximum possible robustness decreases as vulnerability increases
         # At vuln=0, max robustness=100. At vuln=100, max robustness=20.
@@ -2422,7 +2420,7 @@ def generate_structural_report_text(report: StructuralAnalysisReport) -> str:
         f"Max Depth: {report.max_depth}",
         f"Max Fan-In: {report.max_fan_in}",
         f"Longest Linear Chain: {report.longest_linear_chain}",
-        f"\nVulnerability Score: {report.structural_score:.1f}/100",
+        f"\nVulnerability Score: {report.vulnerability_score:.1f}/100",
         f"Robustness Score: {report.robustness_score:.1f}/100",
     ]
     

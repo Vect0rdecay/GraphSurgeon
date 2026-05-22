@@ -1,8 +1,8 @@
 """
 Structural Motif Analyzer - Core Module
 
-Analyzes neural network DAGs for structural motifs and attack landscape indicators.
-Architecture describes what perturbation classes are structurally plausible, not exploitability.
+Analyzes neural network DAGs for structural motifs and attack landscape indicators
+perspective to identify attack surfaces and exploitable weaknesses.
 """
 
 from dataclasses import dataclass, field
@@ -179,7 +179,7 @@ class ModelSecurityReport:
 # OPERATOR SECURITY PROFILES
 # =============================================================================
 
-OPERATOR_SECURITY_DB = {
+OPERATOR_REFERENCE_DB = {
     # ---------------------------------------------------------------------
     # CONVOLUTION OPERATIONS - Primary attack surface for adversarial examples
     # ---------------------------------------------------------------------
@@ -5238,7 +5238,7 @@ class ModelFlowDescriber:
             if node_id not in node_map:
                 continue
             node = node_map[node_id]
-            op_info = OPERATOR_SECURITY_DB.get(node.op_type, OPERATOR_SECURITY_DB["UNKNOWN"])
+            op_info = OPERATOR_REFERENCE_DB.get(node.op_type, OPERATOR_REFERENCE_DB["UNKNOWN"])
             category = op_info.get("category", "unknown")
             
             if category != current_category and current_stage:
@@ -5980,7 +5980,7 @@ class StructuralMotifAnalyzer:
         )
         
         # Get operator security info
-        op_info = OPERATOR_SECURITY_DB.get(op_type, OPERATOR_SECURITY_DB["UNKNOWN"])
+        op_info = OPERATOR_REFERENCE_DB.get(op_type, OPERATOR_REFERENCE_DB["UNKNOWN"])
         
         # Estimate Lipschitz constant
         profile.lipschitz_estimate = self._estimate_lipschitz(op_type, attributes, weights)
@@ -6928,7 +6928,3 @@ if __name__ == "__main__":
     # Export to JSON
     export_report_json(report, "security_report.json")
 
-
-
-# Backward-compatible alias (internal use only)
-NNVulnerabilityAnalyzer = StructuralMotifAnalyzer

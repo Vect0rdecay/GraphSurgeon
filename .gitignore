@@ -6,27 +6,25 @@ __pycache__/
 .eggs/
 dist/
 build/
-*.egg
 
 # Virtual environments
 venv/
 .venv/
 
-# ONNX and large artifacts
+# ONNX binaries and caches
 *.onnx
 *.onnx.data
 .cache/
-
-# Test fixtures (external)
 tests/.fixtures/
 
-# IDE / OS
+# Test and analysis output
+.pytest_cache/
+.coverage
+htmlcov/
+dual_mode_results/
+batch_analysis_results/
+
+# IDE
 .idea/
 .vscode/
 *.swp
-.DS_Store
-
-# Generated output
-dual_mode_results/
-batch_analysis_results/
-*.log

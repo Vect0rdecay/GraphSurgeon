@@ -1,1 +1,2 @@
-"""Analysis modules for motifs, patterns, and flow."""
+from graph_surgeon.analysis.motifs import StructuralMotifAnalyzer
+NNVulnerabilityAnalyzer = StructuralMotifAnalyzer

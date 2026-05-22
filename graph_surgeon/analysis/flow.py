@@ -1,5 +1,2 @@
-"""Plain-English execution flow descriptions."""
-
-from graph_surgeon.analysis.motifs import ModelFlowDescriber
-
-__all__ = ["ModelFlowDescriber"]
+from graph_surgeon.analysis.motifs import ModelFlowDescriber, OPERATOR_REFERENCE_DB
+OPERATOR_SECURITY_DB = OPERATOR_REFERENCE_DB

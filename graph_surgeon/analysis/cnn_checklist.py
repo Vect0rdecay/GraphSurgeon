@@ -1,5 +1,5 @@
 """
-CNN DAG Security Audit Checklist
+CNN DAG Structural Checklist Checklist
 
 Comprehensive structural checklist for vision models like ResNet, Inception, 
 EfficientNet, ConvNeXt based on adversarial ML research best practices.
@@ -94,11 +94,11 @@ class CNNAuditReport:
     security_grade: str = "?"
 
 
-class CNNStructuralChecklist:
+class CNNSecurityAuditor:
     """
     Performs comprehensive structural checklist on CNN architectures.
     
-    Implements the full CNN DAG Security Audit Checklist covering:
+    Implements the full CNN DAG Structural Checklist Checklist covering:
     - Input/Stem vulnerabilities
     - Linear propagation issues
     - Pooling layer risks

@@ -1,3 +1,1 @@
-"""Optional runtime behavioral characterization (install graph-surgeon[behavior])."""
-
-__all__ = []
+"""Runtime behavioral characterization (optional extra)."""

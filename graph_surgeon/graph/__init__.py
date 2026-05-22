@@ -1,28 +1,42 @@
-"""Graph manipulation primitives for ONNX DAG reverse engineering."""
-
-from graph_surgeon.graph.edits import SurgeryResult
-from graph_surgeon.graph.surgeon import GraphSurgeon
+"""ONNX graph manipulation core."""
+from graph_surgeon.graph.surgeon import (
+    GraphSurgeon,
+    create_avgpool_node,
+    create_batchnorm_node,
+    create_conv_node,
+    create_identity_node,
+    create_maxpool_node,
+    create_relu_node,
+)
 from graph_surgeon.graph.topology import (
-    GraphTopology,
-    GraphTopologyConfig,
     LayerPosition,
     NodeTopology,
-    build_graph_topology,
-    classify_position,
-    compute_node_depths,
+    GraphTopology,
+    GraphTopologyConfig,
 )
-from graph_surgeon.graph.validation import GraphValidationLevel, GraphValidationResult
+from graph_surgeon.graph.validation import (
+    GraphValidationLevel,
+    GraphValidationResult,
+    ValidationLevel,
+    ValidationResult,
+)
+from graph_surgeon.graph.edits import SurgeryResult
 
 __all__ = [
     "GraphSurgeon",
+    "LayerPosition",
+    "NodeTopology",
     "GraphTopology",
     "GraphTopologyConfig",
     "GraphValidationLevel",
     "GraphValidationResult",
-    "LayerPosition",
-    "NodeTopology",
+    "ValidationLevel",
+    "ValidationResult",
     "SurgeryResult",
-    "build_graph_topology",
-    "classify_position",
-    "compute_node_depths",
+    "create_avgpool_node",
+    "create_batchnorm_node",
+    "create_conv_node",
+    "create_identity_node",
+    "create_maxpool_node",
+    "create_relu_node",
 ]
