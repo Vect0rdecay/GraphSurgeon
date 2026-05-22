@@ -93,6 +93,8 @@ prompts/
 prompt-*.md
 *-deliberation*
 *-internal*
+*EXPOSURE_AUDIT*
+PRE_PUSH*.md
 TODO.private*
 TODO.local*
 *.draft.md
@@ -118,6 +120,10 @@ weights/
 # Test, coverage, and analysis output
 # =============================================================================
 tests/output/
+# Local integration / smoke tests (external ONNX fixtures; not shipped publicly)
+tests/test_integration.py
+tests/test_robustbench_cli.py
+tests/fixtures_manifest.json
 .pytest_cache/
 .coverage
 .coverage.*

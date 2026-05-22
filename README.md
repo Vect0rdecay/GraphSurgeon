@@ -113,26 +113,11 @@ Unit tests (no large ONNX files):
 .venv/bin/python -m pytest tests/test_graph_surgeon.py -v
 ```
 
-Integration tests (RobustBench corpus via env var):
-
-```bash
-export GRAPH_SURGEON_FIXTURE_ROOT=/path/to/onnx/fixtures
-.venv/bin/python -m pytest tests/ -v -m integration
-```
-
-Smoke script (pilot models by default):
-
-```bash
-.venv/bin/python scripts/smoke_robustbench.py
-```
-
-See `tests/README.md`.
+Integration tests (external ONNX fixtures) are gitignored and maintained locally. See `tests/README.md`.
 
 ## Maintainer notes
 
-
-
-***REMOVED***
+Optional corpus rebuild: `GRAPH_SURGEON_RESEARCH_SOURCE=/path/to/research .venv/bin/python scripts/build_research_corpus.py`. Shipped notes under `graph_surgeon/taxonomy/data/` are what the CLI uses.
 
 ## License
 

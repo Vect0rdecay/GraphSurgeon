@@ -1,32 +1,22 @@
 # GraphSurgeon tests
 
-## Unit tests
+## Unit tests (shipped)
 
 Run on every CI build (no external ONNX files required):
 
 ```bash
-.venv/bin/python -m pytest tests/test_graph_surgeon.py -v
+.venv/bin/python -m pytest tests/ -v
 ```
 
-## Dependencies
+This runs `test_graph_surgeon.py`, `test_cli.py`, `test_display.py`, `test_paper_research.py`, and `test_deployment_motifs.py`.
 
-GraphSurgeon is ONNX-only. Install with `[dev]` for onnxruntime (validate commands) and pytest:
+## Local integration tests (not in public repo)
 
-```bash
-.venv/bin/python -m pip install -e ".[dev]"
-```
-
-No PyTorch or CUDA toolkit is required.
-
-Integration tests load RobustBench ONNX models from a directory outside this repo.
-
-Set fixture root (required for integration tests):
+Integration and RobustBench smoke tests require external ONNX fixtures and are **gitignored** (`test_integration.py`, `test_robustbench_cli.py`, `fixtures_manifest.json`). Keep them locally for maintainer validation:
 
 ```bash
 export GRAPH_SURGEON_FIXTURE_ROOT=/path/to/onnx/fixtures
-.venv/bin/python -m pytest tests/ -v -m integration
+.venv/bin/python -m pytest tests/test_integration.py tests/test_robustbench_cli.py -v
 ```
 
-If fixtures are missing, integration tests are skipped.
-
-See `fixtures_manifest.json` for the expected model filenames.
+If fixtures are missing, those tests skip.
