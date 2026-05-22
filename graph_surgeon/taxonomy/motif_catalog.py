@@ -1,0 +1,1499 @@
+"""
+Gadget Registry - Research Provenance Tracking for NN Security Analyzer
+
+This registry tracks the research basis, confidence levels, and versioning for all
+gadgets (vulnerability patterns) detected by the tool.
+
+Purpose:
+- Ensure detection logic is evidence-based
+- Track which papers validate each gadget
+- Enable efficient updates when new research emerges
+- Maintain historical record of changes
+
+Usage:
+    from graph_surgeon.taxonomy.motif_catalog import GADGET_REGISTRY, get_gadget_info
+    
+    info = get_gadget_info("GAP_FC_HEAD")
+    print(info["research_basis"])  # Papers that validate this gadget
+
+Last Updated: 2026-01-19
+Registry Version: 1.0.0
+"""
+
+from dataclasses import dataclass, field
+from typing import List, Optional, Dict, Any
+from enum import Enum
+from datetime import date
+
+
+class GadgetStatus(Enum):
+    """Status of a gadget in the registry."""
+    ACTIVE = "active"                    # Currently used for detection
+    DEPRECATED = "deprecated"            # Superseded by newer research
+    EXPERIMENTAL = "experimental"        # Limited research basis
+    NEEDS_VALIDATION = "needs_validation"  # Research basis outdated
+
+
+class GadgetCategory(Enum):
+    """Category of vulnerability pattern."""
+    INPUT_PREPROCESSING = "input_preprocessing"
+    SPATIAL_AGGREGATION = "spatial_aggregation"
+    FEATURE_FUSION = "feature_fusion"
+    AMPLIFICATION = "amplification"
+    DOWNSAMPLING = "downsampling"
+    NORMALIZATION = "normalization"
+    ATTENTION = "attention"
+    CLASSIFIER_HEAD = "classifier_head"
+    OBJECT_DETECTION = "object_detection"
+    VIT_SPECIFIC = "vit_specific"
+    BACKDOOR = "backdoor"
+    SUPPLY_CHAIN = "supply_chain"
+    INFORMATION_LEAKAGE = "information_leakage"
+
+
+@dataclass
+class GadgetDefinition:
+    """Complete definition of a gadget with research provenance."""
+    
+    # Identity
+    id: str
+    name: str
+    category: GadgetCategory
+    
+    # Description
+    description: str
+    detection_logic: str  # Human-readable description of how it's detected
+    
+    # Research Provenance
+    research_basis: List[str]  # Paper IDs that validate this pattern
+    first_documented: str      # Earliest paper (year or paper ID)
+    last_validated: str        # Most recent confirming paper
+    
+    # Confidence & Status
+    confidence: str            # HIGH, MEDIUM, LOW
+    status: GadgetStatus
+    
+    # Attack Coverage
+    attacks_enabled: List[str]  # Attack types this gadget enables
+    severity_base: str          # HIGH, MEDIUM, LOW - base severity
+    
+    # Versioning
+    version: str
+    
+    # Optional fields with defaults must come last
+    superseded_by: Optional[str] = None  # If deprecated
+    changelog: List[str] = field(default_factory=list)
+    chainable_with: List[str] = field(default_factory=list)
+    conflicts_with: List[str] = field(default_factory=list)
+    notes: str = ""
+
+
+# =============================================================================
+# GADGET REGISTRY
+# =============================================================================
+
+GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
+    
+    # =========================================================================
+    # PHASE 1: Core CNN Vulnerabilities (Foundational)
+    # =========================================================================
+    
+    "GAP_FC_HEAD": GadgetDefinition(
+        id="GAP_FC_HEAD",
+        name="Global Average Pool → FC Head",
+        category=GadgetCategory.CLASSIFIER_HEAD,
+        description="GlobalAveragePool followed by fully-connected classifier. "
+                   "Aggregates spatial features without filtering, allowing localized "
+                   "adversarial patches to dominate final representation.",
+        detection_logic="Detect GlobalAveragePool or GlobalMaxPool followed within 2 hops "
+                       "by Gemm/MatMul layer. Check for Flatten in between.",
+        research_basis=[
+            "36-GoogleAp-2017",      # Original adversarial patch
+            "39-LaVAN-2018",         # Localized adversarial perturbations
+            "71-DPATCH-2019",        # Detection patches
+            "114-FakeIt-2024",       # Confirmed for AI detectors
+            # Phase 4 additions (pattern-confirming):
+            "42-ACS-2019",           # Adversarial camouflage stickers
+            "44-AdvACO-2020",        # Ant colony optimization patches
+            "45-AdvWatermark-2020",  # Watermark-based patches
+            "54-TnT-2022",           # Trojan-in-Texture
+        ],
+        first_documented="2017",
+        last_validated="2024",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["adversarial_patch", "lavan", "universal_perturbation", 
+                        "feature_space_attacks", "dpatch", "aco_patch", "watermark_patch",
+                        "trojan_texture", "copy_paste"],
+        severity_base="HIGH",
+        version="1.2.0",
+        changelog=[
+            "1.0.0 (2026-01-19): Initial implementation",
+            "1.1.0 (2026-01-19): Added severity modifier based on attention presence",
+            "1.2.0 (2026-01-19): Added 6 pattern-confirming papers from Phase 4 categorization",
+        ],
+        chainable_with=["ALIASING_DOWNSAMPLE", "NO_SPATIAL_ATTENTION"],
+        notes="Canonical patch attack vulnerability. Nearly universal in CNN classifiers."
+    ),
+    
+    "ALIASING_DOWNSAMPLE": GadgetDefinition(
+        id="ALIASING_DOWNSAMPLE",
+        name="Aliasing Downsampling",
+        category=GadgetCategory.DOWNSAMPLING,
+        description="Stride-2 convolution or pooling in early layers without anti-aliasing "
+                   "(blur) filter. Causes high-frequency perturbations to fold into lower "
+                   "frequencies, persisting through the network.",
+        detection_logic="Detect Conv with strides >= 2 in first 15% of network. Check for "
+                       "absence of blur/avgpool operations in preceding 2 nodes.",
+        research_basis=[
+            "38-EOT-2018",           # Expectation over transformation
+            "60-RP2-2018",           # Robust physical perturbations
+            "108-AntiAlias-2021",    # Depth-adaptive anti-aliasing defense
+            "109-DiffPurify-2025",   # Anti-aliasing as defense
+            "110-MedOOD-2025",       # Aliasing metrics for OOD
+            # Phase 4 additions (pattern-confirming):
+            "37-PAE-2018",           # Physical adversarial examples
+            "41-D2P-2019",           # Digital-to-physical transfer
+            "46-ABBA-2020",          # Printed backdoors
+            "47-ViewFool-2020",      # Viewpoint attacks (frequency via perspective)
+            "61-DARTS-2018",         # Digital attack in frequency domain
+            "62-RogueSigns-2018",    # Printed sign attacks
+            "63-PSGAN-2019",         # GAN-generated physical patches
+            "64-AdvCam-2020",        # Camera-based viewpoint attacks
+            "76-ExtRP2-2018",        # Extended RP2
+        ],
+        first_documented="2018",
+        last_validated="2025",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["eot_attacks", "rp2_attacks", "frequency_attacks", 
+                        "physical_world_attacks", "fourier_attacks", "printed_attacks",
+                        "digital_to_physical", "viewpoint_attacks", "gan_patches",
+                        # Light-based attacks (covered by aliasing mechanism):
+                        "light_attack", "projector_attack", "slm_attack", "advlb",
+                        "spaa", "opad", "adversarial_shadow", "slap", "adversarial_rain"],
+        severity_base="HIGH",
+        version="1.3.0",
+        changelog=[
+            "1.0.0 (2026-01-19): Initial implementation",
+            "1.1.0 (2026-01-19): Increased severity for object detectors per paper 107",
+            "1.2.0 (2026-01-19): Added 9 pattern-confirming papers from Phase 4 categorization",
+            "1.3.0 (2026-01-19): Added light-based attacks coverage (10 papers analyzed)",
+        ],
+        chainable_with=["GAP_FC_HEAD", "OBJECTNESS_HEAD", "AGGRESSIVE_EARLY_DOWNSAMPLING"],
+        notes="Critical for physical-world attack viability. Anti-aliasing is necessary "
+              "but not sufficient defense. Also covers light-based attacks (shadows, "
+              "projections, illumination) as these create frequency artifacts that alias."
+    ),
+    
+    "MAXPOOL_AFTER_FUSION": GadgetDefinition(
+        id="MAXPOOL_AFTER_FUSION",
+        name="MaxPool After Feature Fusion",
+        category=GadgetCategory.AMPLIFICATION,
+        description="MaxPool operation within 3 hops after Concat/Add fusion. Selects "
+                   "extreme activations, amplifying fused adversarial signals.",
+        detection_logic="Detect MaxPool nodes. Check if any Concat/Add node exists within "
+                       "3 hops upstream.",
+        research_basis=[
+            "36-GoogleAp-2017",
+            "39-LaVAN-2018",
+            "71-DPATCH-2019",
+            "112-StochasticRes-2025",  # Confirms MaxPool amplification
+            # Phase 4 additions (pattern-confirming):
+            "67-PhysGAN-2020",        # Physical GAN - MaxPool amplifies patterns
+        ],
+        first_documented="2017",
+        last_validated="2025",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["amplified_patch", "multi_scale_patch", "sparse_attacks", "gan_attacks"],
+        severity_base="HIGH",
+        version="1.1.0",
+        changelog=[
+            "1.0.0 (2026-01-19): Initial implementation",
+            "1.1.0 (2026-01-19): Added PhysGAN as pattern-confirming paper",
+        ],
+        chainable_with=["HIGH_FANIN_FUSION", "FUSION_POINT"],
+        notes="Hardening: Replace with AvgPool or BlurPool after fusion."
+    ),
+    
+    "HIGH_FANIN_FUSION": GadgetDefinition(
+        id="HIGH_FANIN_FUSION",
+        name="High Fan-in Feature Fusion",
+        category=GadgetCategory.FEATURE_FUSION,
+        description="Concat(axis=1) with 4+ input branches. Each branch is an independent "
+                   "attack entry point, enabling multi-scale coordinated attacks.",
+        detection_logic="Detect Concat nodes with axis=1. Count input edges. Flag if >= 4.",
+        research_basis=[
+            "71-DPATCH-2019",
+            "111-DUMBer-2025",  # Shows AT ineffective for high fan-in
+            # Phase 4 additions (pattern-confirming):
+            "83-InvisCloak-2018",  # Multi-scale attack via high fan-in
+        ],
+        first_documented="2018",
+        last_validated="2025",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["multi_scale_pgd", "universal_perturbation", 
+                        "transfer_attacks", "dpatch", "invisible_cloak"],
+        severity_base="MEDIUM",
+        version="1.2.0",
+        changelog=[
+            "1.0.0 (2026-01-19): Initial implementation",
+            "1.1.0 (2026-01-19): Added AT resistance warning per paper 111",
+            "1.2.0 (2026-01-19): Added Invisible Cloak as pattern-confirming paper",
+        ],
+        chainable_with=["MAXPOOL_AFTER_FUSION", "SKIP_CONNECTION"],
+        notes="WARNING: Research [111] shows adversarial training is less effective "
+              "for high fan-in architectures."
+    ),
+    
+    "SKIP_CONNECTION": GadgetDefinition(
+        id="SKIP_CONNECTION",
+        name="Long Skip Connection",
+        category=GadgetCategory.FEATURE_FUSION,
+        description="Add operation implementing skip/residual connection spanning > 5 layers. "
+                   "Creates gradient highways for stable attack optimization.",
+        detection_logic="Detect Add nodes. Calculate skip distance between inputs. "
+                       "Flag if distance > 5 layers.",
+        research_basis=[
+            "ResNet-2015",  # Original residual networks
+            "111-DUMBer-2025",  # Gradient highways bypass AT
+        ],
+        first_documented="2015",
+        last_validated="2025",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["pgd", "cw", "momentum_attacks", "transfer_attacks"],
+        severity_base="MEDIUM",
+        version="1.1.0",
+        changelog=[
+            "1.0.0 (2026-01-19): Initial implementation",
+            "1.1.0 (2026-01-19): Added AT bypass warning per paper 111",
+        ],
+        chainable_with=["HIGH_FANIN_FUSION"],
+        notes="WARNING: Skip connections create gradient highways that may bypass "
+              "adversarial training defenses."
+    ),
+    
+    "FUSION_POINT": GadgetDefinition(
+        id="FUSION_POINT",
+        name="Multi-branch Feature Fusion",
+        category=GadgetCategory.FEATURE_FUSION,
+        description="Concat(axis=1) with 2-3 input branches. Standard multi-branch fusion "
+                   "point enabling perturbation superposition.",
+        detection_logic="Detect Concat nodes with axis=1 and 2-3 inputs.",
+        research_basis=[
+            "36-GoogleAp-2017",
+            "InceptionV3-2015",
+        ],
+        first_documented="2015",
+        last_validated="2017",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["multi_scale_pgd", "universal_perturbation"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["AMPLIFIER", "LARGE_KERNEL"],
+        notes="Less severe than HIGH_FANIN_FUSION but still enables multi-scale attacks."
+    ),
+    
+    "AMPLIFIER": GadgetDefinition(
+        id="AMPLIFIER",
+        name="MaxPool Amplifier",
+        category=GadgetCategory.AMPLIFICATION,
+        description="MaxPool operation (not after fusion). Selects extreme activations, "
+                   "amplifying adversarial spikes.",
+        detection_logic="Detect MaxPool nodes not within 3 hops of Concat/Add.",
+        research_basis=[
+            "OnePixel-2019",  # One-pixel attack
+            "SparsePert-2018",  # Sparse perturbations
+        ],
+        first_documented="2018",
+        last_validated="2019",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["sparse_attacks", "one_pixel", "patch_attacks", "pgd"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["FUSION_POINT", "DOWNSAMPLER"],
+        notes="Hardening: Replace with AvgPool."
+    ),
+    
+    "DOWNSAMPLER": GadgetDefinition(
+        id="DOWNSAMPLER",
+        name="Stride-2 Downsampler",
+        category=GadgetCategory.DOWNSAMPLING,
+        description="Stride-2 Conv not in early layers, without anti-aliasing. "
+                   "Contributes to frequency attack vulnerability.",
+        detection_logic="Detect Conv with strides >= 2 in middle/late layers without "
+                       "preceding blur operation.",
+        research_basis=[
+            "108-AntiAlias-2021",
+        ],
+        first_documented="2021",
+        last_validated="2021",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["frequency_attacks", "fourier_attacks", "patch_survivability"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["AMPLIFIER", "FUSION_POINT"],
+        notes="Less severe than early aliasing but still contributes to frequency attacks."
+    ),
+    
+    "NORMALIZER": GadgetDefinition(
+        id="NORMALIZER",
+        name="BatchNorm Layer",
+        category=GadgetCategory.NORMALIZATION,
+        description="BatchNormalization layer. Assumes stable activation distributions; "
+                   "adversarial inputs cause distribution shift that BN can amplify.",
+        detection_logic="Detect BatchNormalization nodes.",
+        research_basis=[
+            "BNAttack-2020",  # BN distribution shift attacks
+            # Light-based attacks cause distribution shift:
+            "66-AdvShadow-2022",  # Shadows shift activation distributions
+        ],
+        first_documented="2020",
+        last_validated="2022",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["distribution_shift_attacks", "domain_attacks",
+                        "light_attacks", "shadow_attacks", "illumination_attacks"],
+        severity_base="LOW",
+        version="1.1.0",
+        changelog=[
+            "1.0.0 (2026-01-19): Initial implementation",
+            "1.1.0 (2026-01-19): Added light-based attack coverage (illumination causes distribution shift)",
+        ],
+        chainable_with=["FUSION_POINT"],
+        notes="Hardening: GroupNorm/RMSNorm, freeze BN stats at inference. "
+              "Light-based attacks (shadows, projections) cause activation distribution shift "
+              "that BN amplifies. Models with many BN layers are sensitive to illumination changes."
+    ),
+    
+    "LARGE_KERNEL": GadgetDefinition(
+        id="LARGE_KERNEL",
+        name="Large Kernel After Fusion",
+        category=GadgetCategory.FEATURE_FUSION,
+        description="Conv with kernel >= 5x5 within 3 hops after feature fusion. "
+                   "Fused perturbations spread across wide receptive field.",
+        detection_logic="Detect Conv with kernel_shape >= (5,5). Check if Concat/Add "
+                       "exists within 3 hops upstream.",
+        research_basis=[
+            "Receptive-2019",  # Receptive field analysis
+        ],
+        first_documented="2019",
+        last_validated="2019",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["patch_attacks", "gradient_steering"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["FUSION_POINT"],
+        notes="Only flagged after fusion to reduce false positives."
+    ),
+    
+    "LINEAR_HEAD": GadgetDefinition(
+        id="LINEAR_HEAD",
+        name="Linear Classifier Head",
+        category=GadgetCategory.CLASSIFIER_HEAD,
+        description="Final FC layer (Gemm/MatMul) as classifier. Direct logit manipulation "
+                   "target for C&W and margin attacks.",
+        detection_logic="Detect Gemm/MatMul in late layers with Softmax/Sigmoid downstream.",
+        research_basis=[
+            "CW-2017",  # C&W attack
+        ],
+        first_documented="2017",
+        last_validated="2017",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["feature_space_attacks", "universal_perturbation", "logit_attacks"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["EXTRACTION_SURFACE"],
+        notes="Nearly universal in classifiers. Severity depends on preceding architecture."
+    ),
+    
+    "EXTRACTION_SURFACE": GadgetDefinition(
+        id="EXTRACTION_SURFACE",
+        name="Model Extraction Surface",
+        category=GadgetCategory.INFORMATION_LEAKAGE,
+        description="Softmax output layer. Reveals decision boundaries enabling model "
+                   "extraction and membership inference attacks.",
+        detection_logic="Detect Softmax nodes.",
+        research_basis=[
+            "ModelExtract-2016",  # Model extraction attacks
+            "MemberInfer-2017",   # Membership inference
+        ],
+        first_documented="2016",
+        last_validated="2017",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["model_extraction", "membership_inference"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["LINEAR_HEAD"],
+        notes="Different threat model from adversarial perturbation."
+    ),
+    
+    "CONTROL_POINT": GadgetDefinition(
+        id="CONTROL_POINT",
+        name="Conditional Control Point (Existing Backdoor Indicator)",
+        category=GadgetCategory.BACKDOOR,
+        description="Conditional operations (Where, If, Equal) in the computational graph "
+                   "that could implement trigger-based backdoors. These operations can "
+                   "detect specific input patterns and conditionally route to malicious outputs. "
+                   "Their presence is a CRITICAL indicator of potential ShadowLogic backdoors.",
+        detection_logic="Detect Where, If, Equal, Less, Greater, And, Or, Not, Xor nodes. "
+                       "These are extremely rare in standard neural networks.",
+        research_basis=[
+            "HiddenLayer-ShadowLogic-2024",  # Primary ShadowLogic research
+            "HiddenLayer-PersistentBackdoors-2024",  # Persistence through conversions
+            "arXiv-2511.00664",  # ShadowLogic in LLMs
+        ],
+        first_documented="2024",
+        last_validated="2024",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["shadowlogic", "backdoor_triggers", "output_override", 
+                        "trigger_detection", "conditional_backdoor"],
+        severity_base="CRITICAL",
+        version="2.0.0",
+        changelog=[
+            "1.0.0 (2026-01-19): Initial implementation",
+            "2.0.0 (2026-01-19): Updated with HiddenLayer ShadowLogic research, elevated to CRITICAL"
+        ],
+        chainable_with=["SHADOWLOGIC_FORMAT_SURFACE", "SHADOWLOGIC_INJECTION_POINT"],
+        notes="CRITICAL finding. Indicates potential existing backdoor. "
+              "Standard neural networks do NOT use conditional operations. "
+              "Any presence should trigger immediate investigation."
+    ),
+    
+    # =========================================================================
+    # SHADOWLOGIC SUPPLY CHAIN VULNERABILITIES
+    # =========================================================================
+    
+    "SHADOWLOGIC_FORMAT_SURFACE": GadgetDefinition(
+        id="SHADOWLOGIC_FORMAT_SURFACE",
+        name="ShadowLogic-Susceptible Format",
+        category=GadgetCategory.SUPPLY_CHAIN,
+        description="Model is stored in a graph-based format (ONNX, TensorFlow, PyTorch) "
+                   "that allows direct manipulation of the computational graph. An attacker "
+                   "with file access can inject ShadowLogic nodes without retraining.",
+        detection_logic="Check model format. ONNX, TensorFlow SavedModel, and PyTorch "
+                       "formats all allow graph editing. TFLite and CoreML have some "
+                       "protection through compilation.",
+        research_basis=[
+            "HiddenLayer-ShadowLogic-2024",
+            "HiddenLayer-PersistentBackdoors-2024",
+        ],
+        first_documented="2024",
+        last_validated="2024",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["shadowlogic_injection", "graph_manipulation", "supply_chain_attack"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation from HiddenLayer research"],
+        chainable_with=["SHADOWLOGIC_INJECTION_POINT", "SHADOWLOGIC_CAMOUFLAGE"],
+        notes="Applies to most common model formats. Risk is format-inherent. "
+              "Mitigation requires external integrity verification."
+    ),
+    
+    "SHADOWLOGIC_INJECTION_POINT": GadgetDefinition(
+        id="SHADOWLOGIC_INJECTION_POINT",
+        name="ShadowLogic Injection Point",
+        category=GadgetCategory.SUPPLY_CHAIN,
+        description="Location in the computational graph where ShadowLogic backdoor nodes "
+                   "could be trivially injected. Input stem for trigger detection, "
+                   "output layer for result override, or branch points for selective activation.",
+        detection_logic="Map graph structure to identify: (1) input-adjacent nodes for "
+                       "trigger injection, (2) output-adjacent nodes for override injection, "
+                       "(3) branch/merge points for selective modification.",
+        research_basis=[
+            "HiddenLayer-ShadowLogic-2024",
+        ],
+        first_documented="2024",
+        last_validated="2024",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["shadowlogic_injection", "trigger_insertion", "output_override"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["SHADOWLOGIC_FORMAT_SURFACE", "SHADOWLOGIC_CAMOUFLAGE"],
+        notes="All models have injection points - this is structural. Combined with "
+              "FORMAT_SURFACE, enables full ShadowLogic attack."
+    ),
+    
+    "SHADOWLOGIC_CAMOUFLAGE": GadgetDefinition(
+        id="SHADOWLOGIC_CAMOUFLAGE",
+        name="ShadowLogic Camouflage Potential",
+        category=GadgetCategory.SUPPLY_CHAIN,
+        description="Model structure has high repetition and complexity, making injected "
+                   "ShadowLogic nodes harder to detect through manual inspection. Large "
+                   "models with many similar operations provide better camouflage.",
+        detection_logic="Analyze graph statistics: node count, operation repetition, "
+                       "total parameters. High values indicate difficult audit.",
+        research_basis=[
+            "HiddenLayer-ShadowLogic-2024",
+        ],
+        first_documented="2024",
+        last_validated="2024",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["shadowlogic_concealment", "audit_evasion"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["SHADOWLOGIC_FORMAT_SURFACE", "SHADOWLOGIC_INJECTION_POINT"],
+        notes="Increases difficulty of detecting injected backdoors. Large production "
+              "models with 100+ layers are essentially impossible to manually audit."
+    ),
+    
+    "SHADOWLOGIC_NO_INTEGRITY": GadgetDefinition(
+        id="SHADOWLOGIC_NO_INTEGRITY",
+        name="Missing Model Integrity Verification",
+        category=GadgetCategory.SUPPLY_CHAIN,
+        description="Model file lacks cryptographic integrity verification (signatures, "
+                   "checksums). A modified model cannot be distinguished from the original "
+                   "without external verification mechanisms.",
+        detection_logic="Check for absence of embedded signatures. Note: Most model "
+                       "formats do not support built-in integrity verification.",
+        research_basis=[
+            "HiddenLayer-ShadowLogic-2024",
+            "HiddenLayer-PersistentBackdoors-2024",
+        ],
+        first_documented="2024",
+        last_validated="2024",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["model_tampering", "supply_chain_attack", "integrity_bypass"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["SHADOWLOGIC_FORMAT_SURFACE"],
+        notes="Applies to all common formats. Mitigation requires external signature "
+              "verification before deployment. Essential for supply chain security."
+    ),
+    
+    "SHAPE_OP": GadgetDefinition(
+        id="SHAPE_OP",
+        name="Early Shape Operation",
+        category=GadgetCategory.INPUT_PREPROCESSING,
+        description="Resize, Pad, Slice, Crop in early layers. Enables EoT attacks "
+                   "and adversarial resizing/patch placement manipulation.",
+        detection_logic="Detect Resize, Pad, Slice, Crop in first 15% of network.",
+        research_basis=[
+            "38-EOT-2018",
+        ],
+        first_documented="2018",
+        last_validated="2018",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["eot_attacks", "adversarial_resize", "patch_placement"],
+        severity_base="LOW",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=[],
+        notes="Common in models with dynamic input handling."
+    ),
+    
+    # =========================================================================
+    # ATTENTION GADGETS
+    # =========================================================================
+    
+    "NO_SPATIAL_ATTENTION": GadgetDefinition(
+        id="NO_SPATIAL_ATTENTION",
+        name="Missing Spatial Attention",
+        category=GadgetCategory.ATTENTION,
+        description="Model has GAP→FC classifier but no spatial attention mechanisms "
+                   "(SE, CBAM, self-attention) to filter anomalous patch regions.",
+        detection_logic="Check for absence of SE blocks, CBAM, self-attention patterns "
+                       "when GAP_FC_HEAD is present.",
+        research_basis=[
+            "36-GoogleAp-2017",  # Patches work because no filtering
+            "39-LaVAN-2018",
+            "SENet-2018",  # SE blocks as defense
+        ],
+        first_documented="2017",
+        last_validated="2018",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["adversarial_patch", "lavan", "universal_perturbation", 
+                        "localized_attacks"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["GAP_FC_HEAD", "ALIASING_DOWNSAMPLE"],
+        notes="Increases GAP_FC_HEAD severity to CRITICAL when present."
+    ),
+    
+    "HAS_SPATIAL_ATTENTION": GadgetDefinition(
+        id="HAS_SPATIAL_ATTENTION",
+        name="Spatial Attention Present (Defensive)",
+        category=GadgetCategory.ATTENTION,
+        description="Model has SE blocks, CBAM, or self-attention that can help filter "
+                   "anomalous patch regions. DEFENSIVE indicator.",
+        detection_logic="Detect SE block pattern (GAP→FC→ReLU→FC→Sigmoid→Mul) or "
+                       "self-attention pattern (MatMul→Softmax→MatMul).",
+        research_basis=[
+            "SENet-2018",
+            "CBAM-2018",
+        ],
+        first_documented="2018",
+        last_validated="2018",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=[],  # Defensive - doesn't enable attacks
+        severity_base="DEFENSIVE",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=[],
+        notes="Reduces GAP_FC_HEAD severity to MEDIUM when present."
+    ),
+    
+    # =========================================================================
+    # PHASE 2: Object Detector Gadgets
+    # =========================================================================
+    
+    "OBJECTNESS_HEAD": GadgetDefinition(
+        id="OBJECTNESS_HEAD",
+        name="Objectness Scoring Head",
+        category=GadgetCategory.OBJECT_DETECTION,
+        description="Sigmoid layer for objectness confidence scoring in detectors. "
+                   "Direct target for Adversarial YOLO attacks to suppress detections.",
+        detection_logic="Detect Sigmoid in late layers after Conv, with spatial output shape.",
+        research_basis=[
+            "84-AdvYOLO-2019",    # Adversarial YOLO
+            "73-ObjectHider-2020",  # Object hiding
+            # Phase 4 additions (pattern-confirming):
+            "72-DPatch2-2019",    # Improved DPATCH
+            "74-LPAttack-2020",   # License plate attacks
+            "75-SwitchPatch-2022",  # Class switching
+            "86-AdvTshirt-2020",  # Adversarial T-shirt
+            "87-InvisCloak2-2020",  # Improved cloak
+            "88-NAP-2021",        # Naturalistic adversarial patches
+            "89-LAP-2021",        # Legitimate adversarial patches
+            "90-AdvTexture-2022",  # Adversarial textures
+            "91-AdvART-2023",     # Adversarial art
+            "92-PatchInvis-2023",  # Patch of invisibility
+            "93-DAP-2023",        # Dynamic adversarial patches
+        ],
+        first_documented="2019",
+        last_validated="2023",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["adversarial_yolo", "object_hider", "disappearance_attacks", 
+                        "objectness_suppression", "adversarial_clothing", "adversarial_texture",
+                        "license_plate_attack", "patch_switching"],
+        severity_base="HIGH",
+        version="1.1.0",
+        changelog=[
+            "1.0.0 (2026-01-19): Initial implementation",
+            "1.1.0 (2026-01-19): Added 11 pattern-confirming papers from Phase 4 categorization",
+        ],
+        chainable_with=["ANCHOR_BASED_DETECTION", "NMS_DEPENDENCY"],
+        notes="Suppressing objectness = complete invisibility (worse than misclassification). "
+              "Most well-validated gadget with 13 confirming papers."
+    ),
+    
+    "ANCHOR_BASED_DETECTION": GadgetDefinition(
+        id="ANCHOR_BASED_DETECTION",
+        name="Anchor-Based Detection",
+        category=GadgetCategory.OBJECT_DETECTION,
+        description="Detection output with anchor-pattern channels (255, 507, etc.). "
+                   "Fixed anchor grids provide predictable attack targets.",
+        detection_logic="Detect Conv in late layers with output channels matching "
+                       "anchor patterns (divisible by 3, common YOLO patterns).",
+        research_basis=[
+            "71-DPATCH-2019",
+            "84-AdvYOLO-2019",
+        ],
+        first_documented="2019",
+        last_validated="2019",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["dpatch", "adversarial_yolo", "anchor_manipulation", 
+                        "targeted_disappearance"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["OBJECTNESS_HEAD", "FPN_STRUCTURE"],
+        notes="Hardening: Anchor-free detection (FCOS, CenterNet)."
+    ),
+    
+    "FPN_STRUCTURE": GadgetDefinition(
+        id="FPN_STRUCTURE",
+        name="Feature Pyramid Network",
+        category=GadgetCategory.OBJECT_DETECTION,
+        description="Upsample→Add/Concat lateral connections forming feature pyramid. "
+                   "Each pyramid level is independent attack entry point.",
+        detection_logic="Detect Upsample/Resize followed by Add/Concat in middle layers.",
+        research_basis=[
+            "77-ShapeShifter-2018",
+            "71-DPATCH-2019",
+        ],
+        first_documented="2018",
+        last_validated="2019",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["multi_scale_evasion", "dpatch", "scale_sensitive_attacks", 
+                        "shapeshifter"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["HIGH_FANIN_FUSION", "DETECTION_HEAD_PATTERN"],
+        notes="Multiple scales = multiple attack surfaces."
+    ),
+    
+    "TWO_STAGE_RPN": GadgetDefinition(
+        id="TWO_STAGE_RPN",
+        name="Two-Stage RPN Detection",
+        category=GadgetCategory.OBJECT_DETECTION,
+        description="ROIAlign/ROIPool indicating two-stage detector with Region Proposal "
+                   "Network. Attacking RPN causes complete object disappearance.",
+        detection_logic="Detect RoiAlign, RoiPool, ROIAlign, ROIPool nodes.",
+        research_basis=[
+            "77-ShapeShifter-2018",
+        ],
+        first_documented="2018",
+        last_validated="2018",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["shapeshifter", "rpn_attacks", "proposal_suppression", 
+                        "two_stage_evasion"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["SHARED_BACKBONE", "DETECTION_HEAD_PATTERN"],
+        notes="No proposals = no detections. Single point of failure."
+    ),
+    
+    "NMS_DEPENDENCY": GadgetDefinition(
+        id="NMS_DEPENDENCY",
+        name="NMS Dependency",
+        category=GadgetCategory.OBJECT_DETECTION,
+        description="NonMaxSuppression post-processing. Can be exploited via confidence "
+                   "manipulation and IoU attacks.",
+        detection_logic="Detect NonMaxSuppression, NMS, BatchedNMS nodes.",
+        research_basis=[
+            "NMSAttack-2020",
+            # Phase 4 additions (pattern-confirming):
+            "78-NestedAE-2019",     # Nested adversarial examples (NMS threshold)
+            "79-TransPatch-2021",   # Translucent patches (confidence manipulation)
+        ],
+        first_documented="2019",
+        last_validated="2021",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["confidence_manipulation", "false_positive_injection", "nms_bypass",
+                        "nested_ae", "translucent_patch"],
+        severity_base="MEDIUM",
+        version="1.1.0",
+        changelog=[
+            "1.0.0 (2026-01-19): Initial implementation",
+            "1.1.0 (2026-01-19): Added 2 pattern-confirming papers from Phase 4 categorization",
+        ],
+        chainable_with=["OBJECTNESS_HEAD", "DETECTION_HEAD_PATTERN"],
+        notes="Hardening: Soft-NMS, confidence calibration."
+    ),
+    
+    "DETECTION_HEAD_PATTERN": GadgetDefinition(
+        id="DETECTION_HEAD_PATTERN",
+        name="Detection Head Structure",
+        category=GadgetCategory.OBJECT_DETECTION,
+        description="Multi-output detection structure (Reshape→Transpose/Concat) "
+                   "indicating object detector output formatting.",
+        detection_logic="Detect Reshape in late layers followed by Transpose, Concat, or Split.",
+        research_basis=[
+            "84-AdvYOLO-2019",
+            "77-ShapeShifter-2018",
+        ],
+        first_documented="2018",
+        last_validated="2019",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["adversarial_yolo", "shapeshifter", "detector_evasion"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["OBJECTNESS_HEAD", "ANCHOR_BASED_DETECTION"],
+        notes="Indicates model is object detector, not classifier."
+    ),
+    
+    "SHARED_BACKBONE": GadgetDefinition(
+        id="SHARED_BACKBONE",
+        name="Shared Detection Backbone",
+        category=GadgetCategory.OBJECT_DETECTION,
+        description="Single feature extractor shared by multiple detection heads. "
+                   "Single point of failure for detector attacks.",
+        detection_logic="Identify when detection heads share common upstream feature layers.",
+        research_basis=[
+            "113-FAIRTAT-2025",
+            # Phase 4 additions (pattern-confirming):
+            "100-ERAttack-2020",    # Entity recognition attack on shared backbone
+            "101-ScreenAttack-2020",  # Screen attack propagates through backbone
+        ],
+        first_documented="2020",
+        last_validated="2025",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["single_point_failure", "backbone_attacks", 
+                        "universal_detector_perturbation", "entity_recognition_attack",
+                        "screen_attack"],
+        severity_base="MEDIUM",
+        version="1.1.0",
+        changelog=[
+            "1.0.0 (2026-01-19): Initial implementation",
+            "1.1.0 (2026-01-19): Added 2 pattern-confirming papers from Phase 4 categorization",
+        ],
+        chainable_with=["TWO_STAGE_RPN", "DETECTION_HEAD_PATTERN"],
+        notes="Attack on backbone affects ALL downstream tasks."
+    ),
+    
+    # =========================================================================
+    # PHASE 3: ViT-Specific Gadgets
+    # =========================================================================
+    
+    "VIT_PATCH_EMBEDDING": GadgetDefinition(
+        id="VIT_PATCH_EMBEDDING",
+        name="ViT Patch Embedding",
+        category=GadgetCategory.VIT_SPECIFIC,
+        description="Conv with kernel_shape == strides (typically 16x16 stride 16) "
+                   "for non-overlapping patch tokenization. Single entry point with "
+                   "no spatial redundancy.",
+        detection_logic="Detect Conv in early layers where kernel_shape == strides and "
+                       "kernel >= 14 (common ViT patch sizes: 14, 16, 32).",
+        research_basis=[
+            "103-ViTSSL-2024",  # ViT SSL vulnerabilities
+            "114-FakeIt-2024",  # ViT detector vulnerabilities
+        ],
+        first_documented="2024",
+        last_validated="2024",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["vit_patch_attacks", "attention_hijacking", "universal_perturbation"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["UNREGULARIZED_ATTENTION", "CLS_TOKEN_AGGREGATION"],
+        notes="ViT equivalent of CNN input vulnerability but concentrated in single projection."
+    ),
+    
+    "UNREGULARIZED_ATTENTION": GadgetDefinition(
+        id="UNREGULARIZED_ATTENTION",
+        name="Unregularized Self-Attention",
+        category=GadgetCategory.VIT_SPECIFIC,
+        description="Self-attention blocks without dropout after attention computation. "
+                   "Attention weights can be manipulated to focus on adversarial patches.",
+        detection_logic="Detect MatMul→Softmax→MatMul pattern (self-attention). Check for "
+                       "absence of Dropout within 2 hops after second MatMul.",
+        research_basis=[
+            "103-ViTSSL-2024",
+        ],
+        first_documented="2024",
+        last_validated="2024",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["attention_hijacking", "adversarial_patch", "backdoor_attention"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["VIT_PATCH_EMBEDDING", "CLS_TOKEN_AGGREGATION"],
+        notes="Attention hijacking is highly effective attack against ViTs."
+    ),
+    
+    "CLS_TOKEN_AGGREGATION": GadgetDefinition(
+        id="CLS_TOKEN_AGGREGATION",
+        name="CLS Token Aggregation",
+        category=GadgetCategory.VIT_SPECIFIC,
+        description="Classification using CLS token that aggregates all patch information "
+                   "through attention. Analogous to GAP in CNNs - no spatial filtering.",
+        detection_logic="Detect Slice/Gather extracting first token (CLS) in late layers, "
+                       "followed by LayerNorm and/or FC layer.",
+        research_basis=[
+            "103-ViTSSL-2024",
+        ],
+        first_documented="2024",
+        last_validated="2024",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["vit_patch_attacks", "cls_manipulation", "universal_perturbation"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["VIT_PATCH_EMBEDDING", "UNREGULARIZED_ATTENTION"],
+        notes="Adversarial patches receive equal attention weight as benign content."
+    ),
+    
+    "AGGRESSIVE_EARLY_DOWNSAMPLING": GadgetDefinition(
+        id="AGGRESSIVE_EARLY_DOWNSAMPLING",
+        name="Aggressive Early Downsampling",
+        category=GadgetCategory.DOWNSAMPLING,
+        description="3+ stride-2 operations in first 15% of network. Rapidly destroys "
+                   "spatial information, making small adversarial patches more effective.",
+        detection_logic="Count stride-2 Conv/Pool operations in first 15% of network. "
+                       "Flag if >= 3.",
+        research_basis=[
+            "107-FDMYOLO-2025",  # Small object vulnerability
+        ],
+        first_documented="2025",
+        last_validated="2025",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["small_object_evasion", "physical_patch", "aliasing_attacks"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-19): Initial implementation"],
+        chainable_with=["ALIASING_DOWNSAMPLE", "OBJECTNESS_HEAD"],
+        notes="Small objects especially vulnerable. Reduces minimum effective patch size."
+    ),
+    
+    # =========================================================================
+    # PHASE 6: EXTENDED AUDIO/ASR GADGETS
+    # Research basis: Whisper analysis, CTC research, multilingual ASR
+    # =========================================================================
+    
+    "CTC_DECODER_STRUCTURE": GadgetDefinition(
+        id="CTC_DECODER_STRUCTURE",
+        name="CTC Decoder Output Topology",
+        category=GadgetCategory.CLASSIFIER_HEAD,
+        description="CTC-based ASR output: Linear layer mapping to vocabulary size with "
+                   "blank token at index 0. CTC prefix search and beam decoding are "
+                   "exploitable via adversarial perturbations that manipulate blank/non-blank "
+                   "token probabilities.",
+        detection_logic="Identify final Linear/Gemm/MatMul with output dimension matching "
+                       "typical vocabulary sizes (28-32000). Check for characteristic "
+                       "CTC topology: encoder → projection → vocab-sized output.",
+        research_basis=[
+            "Carlini-Audio-2018",
+            "BATCH_4_5_6_AUDIO_ANALYSIS",
+        ],
+        first_documented="2018",
+        last_validated="2026",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["ctc_prefix_attack", "forced_transcription", "blank_token_exploit"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-20): Initial implementation from audio batch analysis"],
+        chainable_with=["AUDIO_MEL_INPUT", "AUDIO_STRIDE_DOWNSAMPLE", "AUDIO_TEMPORAL_ATTENTION"],
+        notes="CTC loss structure makes models vulnerable to prefix-injection attacks. "
+              "Blank token at index 0 is a known exploitation target."
+    ),
+    
+    "SPECIAL_TOKEN_CONTROL_FLOW": GadgetDefinition(
+        id="SPECIAL_TOKEN_CONTROL_FLOW",
+        name="Special Token Control Flow",
+        category=GadgetCategory.CLASSIFIER_HEAD,
+        description="Autoregressive decoder with special control tokens (endoftext, "
+                   "startoftranscript, translate, transcribe, notimestamps). Acoustic "
+                   "adversarial inputs can force emission of control tokens, hijacking "
+                   "generation flow.",
+        detection_logic="Detect embedding layers with known special token vocabulary patterns. "
+                       "Look for decoder architectures with multiple special token embeddings "
+                       "or task-specific token slots in early decoder positions.",
+        research_basis=[
+            "Whisper-Architecture-Analysis",
+            "BATCH_4_5_6_AUDIO_ANALYSIS",
+        ],
+        first_documented="2023",
+        last_validated="2026",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["token_injection", "premature_eos", "control_token_hijack"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-20): Initial implementation from audio batch analysis"],
+        chainable_with=["CTC_DECODER_STRUCTURE", "CROSS_MODAL_ATTENTION", "ENCODER_DECODER_SEQ2SEQ"],
+        notes="Control tokens create a covert command channel. Adversarial audio can "
+              "force premature EOS or switch tasks without user awareness."
+    ),
+    
+    "TASK_TOKEN_CONDITIONING": GadgetDefinition(
+        id="TASK_TOKEN_CONDITIONING",
+        name="Task Token Conditioning",
+        category=GadgetCategory.CLASSIFIER_HEAD,
+        description="Decoder conditioned on task tokens at input positions (e.g., Whisper's "
+                   "language, task, timestamps tokens). Adversarial inputs can manipulate "
+                   "which task the model performs.",
+        detection_logic="Detect task-specific embedding patterns in decoder input. Look for "
+                       "multiple embedding lookups feeding into decoder's first positions. "
+                       "Task conditioning typically appears as concat/add of learned embeddings "
+                       "with positional encodings.",
+        research_basis=[
+            "Whisper-Architecture-Analysis",
+            "BATCH_4_5_6_AUDIO_ANALYSIS",
+        ],
+        first_documented="2023",
+        last_validated="2026",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["task_confusion", "cross_task_attack", "conditioning_hijack"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-20): Initial implementation from audio batch analysis"],
+        chainable_with=["SPECIAL_TOKEN_CONTROL_FLOW", "CROSS_MODAL_ATTENTION"],
+        notes="Task conditioning is an indirect attack surface. Adversarial audio can "
+              "force translation instead of transcription, or wrong language output."
+    ),
+    
+    "LANGUAGE_DETECTION_HEAD": GadgetDefinition(
+        id="LANGUAGE_DETECTION_HEAD",
+        name="Language Detection Head",
+        category=GadgetCategory.CLASSIFIER_HEAD,
+        description="Classification head on encoder output that determines input language. "
+                   "Adversarial perturbations can confuse language detection, causing "
+                   "wrong-language transcription or code-switching failures.",
+        detection_logic="Detect classification head branching from encoder output with "
+                       "output dimension matching common language count ranges (50-100+). "
+                       "Look for parallel heads on encoder output (one for main task, "
+                       "one for language).",
+        research_basis=[
+            "Whisper-Architecture-Analysis",
+            "BATCH_4_5_6_AUDIO_ANALYSIS",
+        ],
+        first_documented="2023",
+        last_validated="2026",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["language_confusion", "code_switch_attack", "lang_id_bypass"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-20): Initial implementation from audio batch analysis"],
+        chainable_with=["TASK_TOKEN_CONDITIONING", "AUDIO_MEL_INPUT"],
+        notes="Language detection is typically a small classification head. "
+              "Attacking it can cascade errors through the entire pipeline."
+    ),
+    
+    # =========================================================================
+    # PHASE 6: EXTENDED MULTIMODAL GADGETS
+    # Research basis: CLIP, multimodal attacks, cross-modal jailbreaks
+    # =========================================================================
+    
+    "MULTIMODAL_FUSION_POINT": GadgetDefinition(
+        id="MULTIMODAL_FUSION_POINT",
+        name="Multimodal Fusion Point",
+        category=GadgetCategory.FEATURE_FUSION,
+        description="Operation where two or more modality branches merge (Concat, Add, "
+                   "cross-attention). The fusion boundary is a critical attack surface — "
+                   "adversarial content in one modality can corrupt the fused representation.",
+        detection_logic="Detect Concat/Add/MatMul nodes that receive inputs from multiple "
+                       "distinct branches (determined by graph topology analysis). "
+                       "Branches should have different input origins (separate model inputs "
+                       "or distinct processing paths).",
+        research_basis=[
+            "BATCH_7_ANALYSIS",
+            "CLIP-Attack-Research",
+        ],
+        first_documented="2021",
+        last_validated="2026",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["cross_modal_injection", "modality_hijack", "fusion_point_attack", "multimodal_jailbreak"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-20): Initial implementation from multimodal batch analysis"],
+        chainable_with=["CROSS_MODAL_FUSION_LATE", "DUAL_ENCODER_ALIGNMENT", "SHARED_BACKBONE"],
+        notes="Fusion points are where modality boundaries break down. The most effective "
+              "multimodal attacks target these junctions."
+    ),
+    
+    "CROSS_MODAL_FUSION_LATE": GadgetDefinition(
+        id="CROSS_MODAL_FUSION_LATE",
+        name="Late Cross-Modal Fusion",
+        category=GadgetCategory.FEATURE_FUSION,
+        description="Model architecture where modality branches process independently until "
+                   "near the output layer. Late fusion means each modality's representation "
+                   "is fully formed before merging, making single-modality attacks more potent.",
+        detection_logic="Detect fusion points (Concat/Add) in the last 30% of the network "
+                       "where inputs come from branches with independent processing chains. "
+                       "Compare depth of first shared operation vs total depth.",
+        research_basis=[
+            "BATCH_7_ANALYSIS",
+            "Multimodal-Fusion-Research",
+        ],
+        first_documented="2021",
+        last_validated="2026",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["late_fusion_exploit", "modality_disconnect", "adversarial_modality_substitution"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-20): Initial implementation from multimodal batch analysis"],
+        chainable_with=["MULTIMODAL_FUSION_POINT", "DUAL_ENCODER_ALIGNMENT"],
+        notes="Late fusion is architecturally weaker against single-modality attacks because "
+              "the attacked modality's representation is not constrained by the other modality "
+              "until very late in processing."
+    ),
+    
+    "DUAL_ENCODER_ALIGNMENT": GadgetDefinition(
+        id="DUAL_ENCODER_ALIGNMENT",
+        name="Dual Encoder Alignment Space",
+        category=GadgetCategory.FEATURE_FUSION,
+        description="Two separate encoder branches (e.g., vision + text) projecting into a "
+                   "shared embedding space. The alignment loss creates a contrastive attack "
+                   "surface — adversarial inputs in one modality can be crafted to align with "
+                   "arbitrary targets in the other.",
+        detection_logic="Detect two encoder subgraphs with separate inputs whose outputs pass "
+                       "through projection layers (Linear/MatMul) with matching output dimensions. "
+                       "The matching output dims indicate shared embedding space.",
+        research_basis=[
+            "BATCH_7_ANALYSIS",
+            "CLIP-Attack-2022",
+            "CoA-Attack-2024",
+        ],
+        first_documented="2022",
+        last_validated="2026",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["embedding_space_attack", "contrastive_adversarial", "clip_attack", "typographic_attack"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-20): Initial implementation from multimodal batch analysis"],
+        chainable_with=["MULTIMODAL_FUSION_POINT", "ENCODER_PROJECTION_BRIDGE"],
+        notes="CLIP-style dual encoders are particularly vulnerable to typographic attacks "
+              "and embedding space manipulation."
+    ),
+    
+    "TEMPORAL_CROSS_MODAL_SYNC": GadgetDefinition(
+        id="TEMPORAL_CROSS_MODAL_SYNC",
+        name="Temporal Cross-Modal Synchronization",
+        category=GadgetCategory.ATTENTION,
+        description="Shared positional encoding or temporal attention connecting multiple "
+                   "modalities. Temporal synchronization assumes aligned time series — "
+                   "adversarial desynchronization can corrupt cross-modal associations.",
+        detection_logic="Detect shared positional encoding layers feeding into multiple "
+                       "branches, or cross-attention layers with temporal dimension matching. "
+                       "Look for Add operations combining positional embeddings with features "
+                       "from different modality branches.",
+        research_basis=[
+            "BATCH_7_ANALYSIS",
+            "Audio-Visual-Attack-Research",
+        ],
+        first_documented="2023",
+        last_validated="2026",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["temporal_desync_attack", "alignment_corruption", "sync_exploitation"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-20): Initial implementation from multimodal batch analysis"],
+        chainable_with=["MULTIMODAL_FUSION_POINT", "CROSS_MODAL_ATTENTION", "AUDIO_TEMPORAL_ATTENTION"],
+        notes="Temporal sync attacks are subtle — desynchronizing audio and visual streams "
+              "can cause misattribution without obvious artifacts."
+    ),
+    
+    # =========================================================================
+    # PHASE 6: STRUCTURAL/MISC GADGETS
+    # Research basis: Quantization attacks, LLaVA, 3D point cloud research
+    # =========================================================================
+    
+    "ENCODER_PROJECTION_BRIDGE": GadgetDefinition(
+        id="ENCODER_PROJECTION_BRIDGE",
+        name="Encoder Projection Bridge",
+        category=GadgetCategory.FEATURE_FUSION,
+        description="Linear projection layer bridging encoder output to a downstream model "
+                   "(e.g., vision encoder → projection → LLM in LLaVA). The projection "
+                   "compresses or transforms between mismatched dimensions, creating a "
+                   "bottleneck attack surface.",
+        detection_logic="Detect Linear/MatMul operations where input and output dimensions "
+                       "differ significantly (>2x ratio), positioned between two distinct "
+                       "subgraphs. The bridge typically has no activation function.",
+        research_basis=[
+            "LLaVA-Architecture-2023",
+            "BATCH_7_ANALYSIS",
+        ],
+        first_documented="2023",
+        last_validated="2026",
+        confidence="MEDIUM",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["projection_manipulation", "bridge_attack", "dimension_mismatch_exploit"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-20): Initial implementation from multimodal batch analysis"],
+        chainable_with=["DUAL_ENCODER_ALIGNMENT", "MULTIMODAL_FUSION_POINT"],
+        notes="Projection bridges are high-value targets because they compress an entire "
+              "modality's representation into the downstream model's format."
+    ),
+    
+    "QUANTIZATION_NODES": GadgetDefinition(
+        id="QUANTIZATION_NODES",
+        name="Quantization Operator Nodes",
+        category=GadgetCategory.SUPPLY_CHAIN,
+        description="Presence of QuantizeLinear/DequantizeLinear operators indicating the "
+                   "model uses quantized inference. Quantization introduces rounding errors "
+                   "that can be amplified by adversarial perturbations.",
+        detection_logic="Count QuantizeLinear and DequantizeLinear operations in the graph. "
+                       "Detect quantization patterns (QDQ pairs surrounding compute ops).",
+        research_basis=[
+            "Quantization-Adversarial-2023",
+            "BATCH_8_ANALYSIS",
+        ],
+        first_documented="2023",
+        last_validated="2026",
+        confidence="HIGH",
+        status=GadgetStatus.ACTIVE,
+        attacks_enabled=["quantization_error_amplification", "bit_flip_attack", "precision_exploit"],
+        severity_base="MEDIUM",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-20): Initial implementation"],
+        chainable_with=["PERTURBATION_CARRIER", "AMPLIFIER"],
+        notes="Quantized models have fundamentally different error surfaces than FP32 models. "
+              "Integer quantization creates step functions that adversarial perturbations can exploit."
+    ),
+    
+    "VOXEL_ENCODING": GadgetDefinition(
+        id="VOXEL_ENCODING",
+        name="Voxel/Pillar Encoding Structure",
+        category=GadgetCategory.INPUT_PREPROCESSING,
+        description="Spatial binning operations for 3D point cloud processing (voxelization, "
+                   "pillar encoding). Voxel boundaries create quantization artifacts that "
+                   "adversarial point perturbations can exploit.",
+        detection_logic="Detect operations characteristic of voxel encoding: ScatterND, "
+                       "custom voxelization ops, pillar-style grouping patterns. "
+                       "Look for 3D→2D projection patterns or spatial binning operations.",
+        research_basis=[
+            "PointCloud-Adversarial-2023",
+            "BATCH_8_ANALYSIS",
+        ],
+        first_documented="2023",
+        last_validated="2026",
+        confidence="LOW",
+        status=GadgetStatus.EXPERIMENTAL,
+        attacks_enabled=["voxel_perturbation", "point_cloud_attack", "spatial_binning_exploit", "lidar_spoofing"],
+        severity_base="HIGH",
+        version="1.0.0",
+        changelog=["1.0.0 (2026-01-20): Initial implementation — experimental"],
+        chainable_with=["SHARED_BACKBONE"],
+        notes="Voxel encoding is domain-specific (autonomous driving, robotics). "
+              "Detection may require custom op identification."
+    ),
+}
+
+
+# =============================================================================
+# ATTACK CHAIN REGISTRY
+# =============================================================================
+
+CHAIN_REGISTRY: Dict[str, Dict[str, Any]] = {
+    
+    "CHAIN-PATCH-ATTACK-SURFACE": {
+        "name": "Patch Attack Surface",
+        "required_gadgets": ["GAP_FC_HEAD"],
+        "severity_modifiers": {
+            "NO_SPATIAL_ATTENTION": "+CRITICAL",  # Upgrades to CRITICAL
+            "HAS_SPATIAL_ATTENTION": "-MEDIUM",   # Downgrades to MEDIUM
+        },
+        "research_basis": ["36-GoogleAp-2017", "39-LaVAN-2018"],
+        "version": "1.1.0",
+    },
+    
+    "CHAIN-PHYSICAL-WORLD-ATTACK": {
+        "name": "Physical-World Attack Surface",
+        "required_gadgets": ["ALIASING_DOWNSAMPLE"],
+        "min_count": 1,
+        "research_basis": ["38-EOT-2018", "60-RP2-2018"],
+        "version": "1.0.0",
+    },
+    
+    "CHAIN-COMPOUND-PHYSICAL-PATCH": {
+        "name": "Compound Physical Attack Surface",
+        "required_gadgets": ["GAP_FC_HEAD", "ALIASING_DOWNSAMPLE"],
+        "logic": "AND",  # All must be present
+        "severity": "CRITICAL",
+        "research_basis": ["36-GoogleAp-2017", "38-EOT-2018"],
+        "version": "1.0.0",
+    },
+    
+    "CHAIN-AT-RESISTANT-ARCHITECTURE": {
+        "name": "Adversarial Training Resistance Pattern",
+        "required_gadgets": ["HIGH_FANIN_FUSION", "SKIP_CONNECTION"],
+        "min_counts": {"HIGH_FANIN_FUSION": 3, "SKIP_CONNECTION": 3},
+        "severity": "HIGH",
+        "research_basis": ["111-DUMBer-2025"],
+        "version": "1.0.0",
+    },
+    
+    "CHAIN-VIT-PATCH-ATTACK": {
+        "name": "Vision Transformer Patch Attack Surface",
+        "required_gadgets": ["VIT_PATCH_EMBEDDING"],
+        "optional_gadgets": ["UNREGULARIZED_ATTENTION", "CLS_TOKEN_AGGREGATION"],
+        "min_optional": 1,
+        "severity": "CRITICAL",
+        "research_basis": ["103-ViTSSL-2024", "114-FakeIt-2024"],
+        "version": "1.0.0",
+    },
+    
+    "CHAIN-OBJECT-DISAPPEARANCE": {
+        "name": "Object Disappearance Attack Surface",
+        "required_gadgets": ["OBJECTNESS_HEAD"],
+        "severity": "CRITICAL",
+        "research_basis": ["84-AdvYOLO-2019", "73-ObjectHider-2020"],
+        "version": "1.0.0",
+    },
+    
+    "CHAIN-SMALL-OBJECT-SENSITIVITY": {
+        "name": "Small Object Attack Sensitivity",
+        "required_gadgets": ["AGGRESSIVE_EARLY_DOWNSAMPLING"],
+        "optional_gadgets": ["ALIASING_DOWNSAMPLE", "OBJECTNESS_HEAD"],
+        "min_optional": 1,
+        "severity": "HIGH",
+        "research_basis": ["107-FDMYOLO-2025"],
+        "version": "1.0.0",
+    },
+    
+    # =========================================================================
+    # SHADOWLOGIC SUPPLY CHAIN CHAINS
+    # =========================================================================
+    
+    "CHAIN-SHADOWLOGIC-EXISTING-BACKDOOR": {
+        "name": "ShadowLogic Backdoor Detected",
+        "required_gadgets": ["CONTROL_POINT"],
+        "severity": "CRITICAL",
+        "research_basis": ["HiddenLayer-ShadowLogic-2024", "arXiv-2511.00664"],
+        "version": "1.0.0",
+        "notes": "Indicates potential existing backdoor. Conditional operations are "
+                 "extremely rare in standard neural networks.",
+    },
+    
+    "CHAIN-SHADOWLOGIC-INJECTION-SUSCEPTIBILITY": {
+        "name": "ShadowLogic Injection Susceptibility",
+        "required_gadgets": ["SHADOWLOGIC_FORMAT_SURFACE", "SHADOWLOGIC_INJECTION_POINT"],
+        "optional_gadgets": ["SHADOWLOGIC_CAMOUFLAGE", "SHADOWLOGIC_NO_INTEGRITY"],
+        "min_optional": 1,
+        "severity": "HIGH",
+        "severity_modifiers": {
+            "SHADOWLOGIC_CAMOUFLAGE": "+HIGH",  # Increases severity
+            "SHADOWLOGIC_NO_INTEGRITY": "+CRITICAL",  # Upgrades to CRITICAL
+        },
+        "research_basis": ["HiddenLayer-ShadowLogic-2024", "HiddenLayer-PersistentBackdoors-2024"],
+        "version": "1.0.0",
+        "notes": "Model is vulnerable to ShadowLogic injection attacks. Attacker with "
+                 "file access could embed persistent backdoors.",
+    },
+}
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def get_gadget_info(gadget_id: str) -> Optional[GadgetDefinition]:
+    """Get full information about a gadget."""
+    return GADGET_REGISTRY.get(gadget_id)
+
+
+def get_gadgets_by_category(category: GadgetCategory) -> List[GadgetDefinition]:
+    """Get all gadgets in a category."""
+    return [g for g in GADGET_REGISTRY.values() if g.category == category]
+
+
+def get_active_gadgets() -> List[GadgetDefinition]:
+    """Get all currently active gadgets."""
+    return [g for g in GADGET_REGISTRY.values() if g.status == GadgetStatus.ACTIVE]
+
+
+def get_gadgets_for_attack(attack_type: str) -> List[GadgetDefinition]:
+    """Get all gadgets that enable a specific attack type."""
+    return [g for g in GADGET_REGISTRY.values() if attack_type in g.attacks_enabled]
+
+
+def get_research_coverage() -> Dict[str, Any]:
+    """Get summary of research coverage across all gadgets."""
+    all_papers = set()
+    for gadget in GADGET_REGISTRY.values():
+        all_papers.update(gadget.research_basis)
+    
+    return {
+        "total_gadgets": len(GADGET_REGISTRY),
+        "active_gadgets": len(get_active_gadgets()),
+        "total_papers_cited": len(all_papers),
+        "by_category": {
+            cat.value: len(get_gadgets_by_category(cat)) 
+            for cat in GadgetCategory
+        },
+        "by_confidence": {
+            "HIGH": len([g for g in GADGET_REGISTRY.values() if g.confidence == "HIGH"]),
+            "MEDIUM": len([g for g in GADGET_REGISTRY.values() if g.confidence == "MEDIUM"]),
+            "LOW": len([g for g in GADGET_REGISTRY.values() if g.confidence == "LOW"]),
+        },
+    }
+
+
+def validate_registry() -> List[str]:
+    """Validate registry integrity. Returns list of issues found."""
+    issues = []
+    
+    for gid, gadget in GADGET_REGISTRY.items():
+        # Check chainable_with references exist
+        for chain_ref in gadget.chainable_with:
+            if chain_ref not in GADGET_REGISTRY:
+                issues.append(f"{gid}: chainable_with references unknown gadget '{chain_ref}'")
+        
+        # Check superseded_by references exist
+        if gadget.superseded_by and gadget.superseded_by not in GADGET_REGISTRY:
+            issues.append(f"{gid}: superseded_by references unknown gadget '{gadget.superseded_by}'")
+        
+        # Check research_basis not empty for active gadgets
+        if gadget.status == GadgetStatus.ACTIVE and not gadget.research_basis:
+            issues.append(f"{gid}: Active gadget has no research_basis")
+    
+    return issues
+
+
+def print_registry_summary():
+    """Print a summary of the gadget registry."""
+    coverage = get_research_coverage()
+    
+    print("=" * 60)
+    print("GADGET REGISTRY SUMMARY")
+    print("=" * 60)
+    print(f"\nTotal Gadgets: {coverage['total_gadgets']}")
+    print(f"Active Gadgets: {coverage['active_gadgets']}")
+    print(f"Papers Cited: {coverage['total_papers_cited']}")
+    print("\nBy Category:")
+    for cat, count in coverage['by_category'].items():
+        if count > 0:
+            print(f"  {cat}: {count}")
+    print("\nBy Confidence:")
+    for conf, count in coverage['by_confidence'].items():
+        print(f"  {conf}: {count}")
+    
+    issues = validate_registry()
+    if issues:
+        print("\n⚠️  Registry Issues Found:")
+        for issue in issues:
+            print(f"  - {issue}")
+    else:
+        print("\n✓ Registry validation passed")
+
+
+if __name__ == "__main__":
+    print_registry_summary()
+
+
+
+# Technique catalog
+"""
+Structural Motif and Technique Catalog
+
+Comprehensive catalog of adversarial ML attack types, techniques, and 
+vulnerability patterns for security research and model hardening.
+
+Based on MITRE ATLAS, academic literature, and real-world attack analysis.
+"""
+
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import List, Dict, Optional
+
+

@@ -1,0 +1,19 @@
+{
+  "description": "RobustBench ONNX models used by integration tests. Not committed to git.",
+  "fixture_root_env": "GRAPH_SURGEON_FIXTURE_ROOT",
+  "default_fixture_root": "/home/s0crates/nn_security_analyzer/robustbench_validation",
+  "models": [
+    {"filename": "Standard.onnx", "description": "Baseline ResNet-50 CIFAR-10"},
+    {"filename": "Engstrom2019Robustness.onnx", "description": "Adversarially trained model"},
+    {"filename": "Hendrycks2019Using.onnx", "description": "RobustBench model"},
+    {"filename": "Wong2020Fast.onnx", "description": "RobustBench model"},
+    {"filename": "Rice2020Overfitting.onnx", "description": "RobustBench model"},
+    {"filename": "Carmon2019Unlabeled.onnx", "description": "RobustBench model"},
+    {"filename": "Zhang2019Theoretically.onnx", "description": "RobustBench model"},
+    {"filename": "Huang2020Self.onnx", "description": "RobustBench model"},
+    {"filename": "Wang2020Improving.onnx", "description": "RobustBench model"},
+    {"filename": "Andriushchenko2020Understanding.onnx", "description": "RobustBench model"},
+    {"filename": "Sridhar2021Robust.onnx", "description": "RobustBench model"},
+    {"filename": "Wu2020Adversarial_extra.onnx", "description": "RobustBench model"}
+  ]
+}

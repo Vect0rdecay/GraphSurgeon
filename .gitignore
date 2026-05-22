@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+
+# ONNX and large artifacts
+*.onnx
+*.onnx.data
+.cache/
+
+# Test fixtures (external)
+tests/.fixtures/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Generated output
+dual_mode_results/
+batch_analysis_results/
+*.log
