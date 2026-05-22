@@ -66,6 +66,9 @@ def test_catalog_chain_patch():
     assert "Detection rationale" in text
     assert "NO_SPATIAL_ATTENTION" in text
     assert "Aggregated attack classes" in text
+    assert "CRITICAL" not in text
+    assert "severity_modifiers" not in text
+    assert "+CRITICAL" not in text
 
 
 def test_catalog_gadget_gap_includes_paper_notes():

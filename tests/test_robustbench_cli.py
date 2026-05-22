@@ -12,12 +12,7 @@ from graph_surgeon.parsers.onnx_parser import ONNXGraphParser
 
 PILOT_MODELS = ["Standard.onnx", "Wong2020Fast.onnx", "Engstrom2019Robustness.onnx"]
 
-FIXTURE_ROOT = Path(
-    os.environ.get(
-        "GRAPH_SURGEON_FIXTURE_ROOT",
-        "/home/s0crates/nn_security_analyzer/robustbench_validation",
-    )
-)
+FIXTURE_ROOT = Path(os.environ.get("GRAPH_SURGEON_FIXTURE_ROOT", ""))
 
 ROOT = Path(__file__).resolve().parent.parent
 VENV_PYTHON = ROOT / ".venv" / "bin" / "python"

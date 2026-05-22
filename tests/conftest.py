@@ -16,12 +16,7 @@ try:
 except ImportError:
     ONNX_AVAILABLE = False
 
-FIXTURE_ROOT = Path(
-    os.environ.get(
-        "GRAPH_SURGEON_FIXTURE_ROOT",
-        "/home/s0crates/nn_security_analyzer/robustbench_validation",
-    )
-)
+FIXTURE_ROOT = Path(os.environ.get("GRAPH_SURGEON_FIXTURE_ROOT", ""))
 
 _MANIFEST_PATH = Path(__file__).parent / "fixtures_manifest.json"
 if _MANIFEST_PATH.exists():

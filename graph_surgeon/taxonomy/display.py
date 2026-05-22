@@ -303,18 +303,11 @@ def format_catalog_chain(chain_id: str) -> str:
     if chain.get("min_optional") is not None:
         lines.append(f"Minimum optional motifs: {chain['min_optional']}")
 
-    modifiers = chain.get("severity_modifiers", {})
-    if modifiers:
-        lines.append("")
-        lines.append("Modifier motifs (change the attack landscape when also detected):")
-        for mod_id, effect in modifiers.items():
-            lines.append(f"  - {mod_id}: {effect}")
-
     lines.append("")
     lines.append(f"Chain version: {chain.get('version', 'unknown')}")
 
     # Required and optional gadget detail
-    all_gadgets = list(dict.fromkeys(required + optional + list(modifiers.keys())))
+    all_gadgets = list(dict.fromkeys(required + optional))
     if all_gadgets:
         lines.extend(["", "## Motif details"])
         for gid in all_gadgets:

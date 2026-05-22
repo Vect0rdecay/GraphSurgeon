@@ -14,7 +14,7 @@
       "registry_gadgets": [
         "SHARED_BACKBONE"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "101": {
       "slug": "101-ScreenAttack-2020",
@@ -23,7 +23,7 @@
       "registry_gadgets": [
         "SHARED_BACKBONE"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "102": {
       "slug": "102-PG(Poltergeist)-2021",
@@ -51,7 +51,7 @@
       "registry_gadgets": [
         "ALIASING_DOWNSAMPLE"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "38": {
       "slug": "38-EOT(ExpectationOverTransformation)-2018",
@@ -88,7 +88,7 @@
       "registry_gadgets": [
         "ALIASING_DOWNSAMPLE"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "42": {
       "slug": "42-ACS-2019",
@@ -97,7 +97,7 @@
       "registry_gadgets": [
         "GAP_FC_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "43": {
       "slug": "43-ProjectorAttack-2019",
@@ -116,7 +116,7 @@
       "registry_gadgets": [
         "GAP_FC_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "45": {
       "slug": "45-Adv-watermark-2020",
@@ -125,7 +125,7 @@
       "registry_gadgets": [
         "GAP_FC_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "46": {
       "slug": "46-ABBA-2020",
@@ -134,7 +134,7 @@
       "registry_gadgets": [
         "ALIASING_DOWNSAMPLE"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "47": {
       "slug": "47-ViewFool-2020",
@@ -199,7 +199,7 @@
       "registry_gadgets": [
         "GAP_FC_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "56": {
       "slug": "56-AdvCF-2022",
@@ -254,7 +254,7 @@
       "registry_gadgets": [
         "ALIASING_DOWNSAMPLE"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "62": {
       "slug": "62-RogueSigns-2018",
@@ -263,7 +263,7 @@
       "registry_gadgets": [
         "ALIASING_DOWNSAMPLE"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "63": {
       "slug": "63-PS-GAN-2019",
@@ -272,7 +272,7 @@
       "registry_gadgets": [
         "ALIASING_DOWNSAMPLE"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "64": {
       "slug": "64-AdvCam-2020",
@@ -281,7 +281,7 @@
       "registry_gadgets": [
         "ALIASING_DOWNSAMPLE"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "65": {
       "slug": "65-OPAD-2021",
@@ -310,7 +310,7 @@
       "registry_gadgets": [
         "MAXPOOL_AFTER_FUSION"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "70": {
       "slug": "70-TPatch-2023",
@@ -338,7 +338,7 @@
       "registry_gadgets": [
         "OBJECTNESS_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "73": {
       "slug": "73-ObjectHider-2020",
@@ -356,7 +356,7 @@
       "registry_gadgets": [
         "OBJECTNESS_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "75": {
       "slug": "75-SwitchPatch-2022",
@@ -365,7 +365,7 @@
       "registry_gadgets": [
         "OBJECTNESS_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "76": {
       "slug": "76-ExtendedRP2-2018",
@@ -374,7 +374,7 @@
       "registry_gadgets": [
         "ALIASING_DOWNSAMPLE"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "77": {
       "slug": "77-ShapeShifter-2018",
@@ -392,7 +392,7 @@
       "registry_gadgets": [
         "NMS_DEPENDENCY"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "79": {
       "slug": "79-TranslucentPatch-2021",
@@ -401,7 +401,7 @@
       "registry_gadgets": [
         "NMS_DEPENDENCY"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "80": {
       "slug": "80-SLAP-2021",
@@ -440,7 +440,7 @@
       "registry_gadgets": [
         "HIGH_FANIN_FUSION"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "84": {
       "slug": "84-AdversarialYOLO-2019",
@@ -468,7 +468,7 @@
       "registry_gadgets": [
         "OBJECTNESS_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "87": {
       "slug": "87-InvisibleCloak2-2020",
@@ -477,7 +477,7 @@
       "registry_gadgets": [
         "OBJECTNESS_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "88": {
       "slug": "88-NAP-2021",
@@ -486,7 +486,7 @@
       "registry_gadgets": [
         "OBJECTNESS_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "89": {
       "slug": "89-LAP-2021",
@@ -495,7 +495,7 @@
       "registry_gadgets": [
         "OBJECTNESS_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "90": {
       "slug": "90-AdvTexture-2022",
@@ -504,7 +504,7 @@
       "registry_gadgets": [
         "OBJECTNESS_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "91": {
       "slug": "91-AdvART-2023",
@@ -513,7 +513,7 @@
       "registry_gadgets": [
         "OBJECTNESS_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "92": {
       "slug": "92-PatchofInvisibility-2023",
@@ -522,7 +522,7 @@
       "registry_gadgets": [
         "OBJECTNESS_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "93": {
       "slug": "93-DAP-2023",
@@ -531,7 +531,7 @@
       "registry_gadgets": [
         "OBJECTNESS_HEAD"
       ],
-      "source": "batch_harvest"
+      "source": "external_research"
     },
     "94": {
       "slug": "94-AdversarialBulbs-2021",

@@ -118,8 +118,15 @@ def test_catalog_coverage_command():
 
 
 def test_packaged_notes_exclude_internal_file():
+    import subprocess
+
     data_dir = Path(__file__).resolve().parents[1] / "graph_surgeon" / "taxonomy" / "data"
-    assert (data_dir / "attack_research_internal.md").is_file()
+    tracked = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", str(data_dir / "attack_research_internal.md")],
+        capture_output=True,
+        cwd=data_dir.parents[2],
+    )
+    assert tracked.returncode != 0
     notes = (data_dir / "attack_research_notes.md").read_text()
     assert "ShadowLogic Supply Chain" not in notes
     assert "Session Log" not in notes

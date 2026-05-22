@@ -35,6 +35,6 @@ class GraphValidationResult:
     inference_output_shape: Optional[Tuple] = None
 
 
-# Backward-compatible aliases (Carcinoma sync period)
+# Backward-compatible aliases (legacy validation level names)
 ValidationLevel = GraphValidationLevel
 ValidationResult = GraphValidationResult

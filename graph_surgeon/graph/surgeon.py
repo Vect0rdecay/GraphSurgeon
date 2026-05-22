@@ -924,7 +924,7 @@ class GraphSurgeon:
         Example:
             >>> original = surgeon.load_model("model.onnx")
             >>> modified = surgeon.clone_model(original)
-            >>> # ... apply grafts ...
+            >>> # ... apply counterfactual edits ...
             >>> diff = surgeon.compare_graphs(original, modified)
             >>> print(f"Added: {diff['nodes_added']}")
         """
@@ -1160,7 +1160,7 @@ class GraphSurgeon:
         Run ONNX shape inference on a model.
         
         This propagates shape information through the graph, which is useful
-        for verifying that grafts don't break tensor dimensions.
+        for verifying that edits do not break tensor dimensions.
         
         Args:
             model: ONNX model to process
@@ -1280,7 +1280,7 @@ class GraphSurgeon:
             
         Example:
             >>> surgeon = GraphSurgeon()
-            >>> model = surgeon.add_metadata(model, 'carcinoma.grafts', 'ALIASING_DOWNSAMPLE')
+            >>> model = surgeon.add_metadata(model, 'graph_surgeon.notes', 'counterfactual-edit')
         """
         # Create metadata entry
         meta = model.metadata_props.add()
@@ -1305,77 +1305,6 @@ class GraphSurgeon:
             if meta.key == key:
                 return meta.value
         return None
-    
-    def record_graft(self, model: 'onnx.ModelProto',
-                     graft_type: str,
-                     target_node: str,
-                     details: Optional[Dict[str, Any]] = None) -> 'onnx.ModelProto':
-        """
-        Record a graft operation in the model's metadata.
-        
-        This creates a traceable record of all modifications made to the model.
-        
-        Args:
-            model: ONNX model
-            graft_type: Type of graft applied (e.g., 'ALIASING_DOWNSAMPLE')
-            target_node: Name of the node that was targeted
-            details: Optional additional details
-            
-        Returns:
-            Model with graft recorded in metadata
-            
-        Example:
-            >>> surgeon = GraphSurgeon()
-            >>> model = surgeon.record_graft(model, 'INSERT_MAXPOOL', 'conv2_out')
-        """
-        import json
-        from datetime import datetime
-        
-        # Get existing graft log or create new
-        existing = self.get_metadata(model, 'carcinoma.graft_log')
-        if existing:
-            graft_log = json.loads(existing)
-        else:
-            graft_log = []
-        
-        # Add new graft record
-        record = {
-            'graft_type': graft_type,
-            'target_node': target_node,
-            'timestamp': datetime.now().isoformat(),
-        }
-        if details:
-            record['details'] = details
-        
-        graft_log.append(record)
-        
-        # Update metadata
-        # Remove old entry if exists
-        for i, meta in enumerate(model.metadata_props):
-            if meta.key == 'carcinoma.graft_log':
-                del model.metadata_props[i]
-                break
-        
-        self.add_metadata(model, 'carcinoma.graft_log', json.dumps(graft_log))
-        
-        return model
-    
-    def get_graft_history(self, model: 'onnx.ModelProto') -> List[Dict[str, Any]]:
-        """
-        Get the history of grafts applied to a model.
-        
-        Args:
-            model: ONNX model
-            
-        Returns:
-            List of graft records, or empty list if no grafts recorded
-        """
-        import json
-        
-        log = self.get_metadata(model, 'carcinoma.graft_log')
-        if log:
-            return json.loads(log)
-        return []
 
 
 # Convenience functions

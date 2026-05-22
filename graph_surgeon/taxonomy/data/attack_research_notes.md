@@ -10,7 +10,7 @@ Authoring spec: `RESEARCH_NOTE_TEMPLATE.md`. Coverage: `research_coverage.json`.
 ## Light-based attacks (shared ONNX mechanism)
 
 Papers 40, 43, 48, 52, 57, 65, 66, 80, 81, 82 exploit illumination, projection, or weather-like perturbations.
-The ONNX graph vulnerability is the same as patch attacks: ALIASING_DOWNSAMPLE folds high-frequency lighting edges,
+The ONNX attack landscape for lighting mirrors patch attacks: ALIASING_DOWNSAMPLE folds high-frequency lighting edges,
 NORMALIZER amplifies distribution shift under changed illumination, NO_SPATIAL_ATTENTION cannot suppress localized
 bright/dark regions, and GAP_FC_HEAD aggregates spatial perturbations into the classifier head.
 
@@ -49,7 +49,7 @@ Record sensors, ISP version, and microphone path separately from `motifs` output
 - Adversarial Patch is universal (works on any image), printable, and visible
 - Works regardless of where patch is placed in the scene
 
-**Model Vulnerability Factors (DAG-Detectable):**
+**Attack landscape factors (graph-detectable):**
 1. **Global Aggregation:** Models with global pooling allow small regions to dominate
 2. **Lack of Context:** Models don't validate that patch region is semantically consistent
 3. **No Attention:** Models without spatial attention can't learn to ignore patches
@@ -71,7 +71,7 @@ Record sensors, ISP version, and microphone path separately from `motifs` output
 IF has_global_pool_fc_head AND 
    NOT has_spatial_attention AND
    receptive_field > input_size * 0.3:
-   FLAG as PATCH_ATTACK_VULNERABLE
+   Applicable attack class: patch attack surface
 ```
 
 **Hardening Recommendations:**
@@ -144,7 +144,7 @@ Graph-only analysis identifies applicable attack landscape, not whether this mod
 - EOT makes perturbations "survive" the physical-to-digital pipeline
 - Enables actual physical-world adversarial objects
 
-**Model Vulnerability Factors (DAG-Detectable):**
+**Attack landscape factors (graph-detectable):**
 1. **Aliasing from Downsampling:** Stride-2 without anti-aliasing lets high-freq perturbations fold into lower frequencies, surviving transformation
 2. **No Transformation Invariance:** Models without built-in transformation invariance
 3. **High-Frequency Sensitivity:** Early layers sensitive to high-frequency components
@@ -204,7 +204,7 @@ Architecture indicates attack landscape only; training and deployment defenses a
 - Shows that even small visible patches (covering 2% of image) can cause misclassification
 - Demonstrates that models rely on local features without global context validation
 
-**Model Vulnerability Factors (DAG-Detectable):**
+**Attack landscape factors (graph-detectable):**
 1. **Local Feature Dominance:** Features from small regions can dominate final prediction
 2. **No Context Validation:** Model doesn't verify spatial consistency
 3. **High Local Receptive Field Sensitivity:** Local perturbations propagate
@@ -776,7 +776,7 @@ Graph-only analysis identifies applicable attack landscape, not whether this mod
 - Introduced Robust Physical Perturbations (RP2) optimization method
 - Showed attacks work across distances, angles, lighting conditions
 
-**Model Vulnerability Factors (DAG-Detectable):**
+**Attack landscape factors (graph-detectable):**
 1. **Same aliasing vulnerabilities as EOT**
 2. **Classifier sensitivity to localized perturbations**
 3. **No redundancy/verification in prediction pipeline**
@@ -1086,7 +1086,7 @@ Speaker hardware, room acoustics, and sampling rate outside the file are not mod
 - Identified that NMS (Non-Maximum Suppression) can be exploited
 - Demonstrated cross-model transferability
 
-**Model Vulnerability Factors (Object Detector Specific):**
+**Attack landscape factors (object detector):**
 1. **Anchor-based Detection:** Fixed anchor boxes can be fooled
 2. **NMS Exploitation:** Adversarial confidence scores manipulate which boxes survive NMS
 3. **Multi-scale Feature Pyramids:** Attack can target specific scales
@@ -1548,7 +1548,7 @@ Graph-only analysis identifies applicable attack landscape, not whether this mod
 - Classification attacks: Cause WRONG label
 - Detection attacks: Cause NO detection (objectness → 0)
 
-**Model Vulnerability Factors (DAG-Detectable):**
+**Attack landscape factors (graph-detectable):**
 1. **Single objectness output**: One confidence score determines detection
 2. **Grid-based detection**: YOLO's grid can be targeted per-cell
 3. **Anchor boxes**: Fixed anchors create predictable attack targets

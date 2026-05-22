@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Rebuild attack_research_notes.md and research_coverage.json from taxonomy + BATCH harvest."""
+"""Rebuild attack_research_notes.md and research_coverage.json (optional maintainer tool).
+
+Set GRAPH_SURGEON_RESEARCH_SOURCE to a directory of BATCH_*.md research files to merge
+external markdown. Shipped attack_research_notes.md is authoritative for the CLI.
+"""
 
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -11,7 +16,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "graph_surgeon" / "taxonomy" / "data"
-DAGGER_RESEARCH = Path.home() / "nn_security_analyzer" / "research"
+_research_src = os.environ.get("GRAPH_SURGEON_RESEARCH_SOURCE", "").strip()
+RESEARCH_SOURCE = Path(_research_src) if _research_src else None
 NOTES_PATH = DATA / "attack_research_notes.md"
 INTERNAL_PATH = DATA / "attack_research_internal.md"
 COVERAGE_PATH = DATA / "research_coverage.json"
@@ -166,9 +172,9 @@ def parse_batch_paper(section: str, pid: str, meta: Dict[str, Any]) -> str:
 def harvest_batch_files(taxonomy: Dict[str, Dict[str, Any]]) -> Dict[str, str]:
     by_id = slug_by_id(taxonomy)
     out: Dict[str, str] = {}
-    if not DAGGER_RESEARCH.is_dir():
+    if RESEARCH_SOURCE is None or not RESEARCH_SOURCE.is_dir():
         return out
-    for batch in sorted(DAGGER_RESEARCH.glob("BATCH_1*.md")):
+    for batch in sorted(RESEARCH_SOURCE.glob("BATCH_1*.md")):
         text = batch.read_text(encoding="utf-8")
         for m in re.finditer(r"^## Paper (\d+):", text, re.MULTILINE):
             pid = m.group(1)
@@ -223,7 +229,7 @@ def light_attack_appendix() -> str:
         "## Light-based attacks (shared ONNX mechanism)",
         "",
         "Papers 40, 43, 48, 52, 57, 65, 66, 80, 81, 82 exploit illumination, projection, or weather-like perturbations.",
-        "The ONNX graph vulnerability is the same as patch attacks: ALIASING_DOWNSAMPLE folds high-frequency lighting edges,",
+        "The ONNX attack landscape for lighting mirrors patch attacks: ALIASING_DOWNSAMPLE folds high-frequency lighting edges,",
         "NORMALIZER amplifies distribution shift under changed illumination, NO_SPATIAL_ATTENTION cannot suppress localized",
         "bright/dark regions, and GAP_FC_HEAD aggregates spatial perturbations into the classifier head.",
         "",
@@ -453,7 +459,7 @@ def build_coverage(
             "status": st,
             "tier": tier,
             "registry_gadgets": gadgets_from_status(status),
-            "source": "batch_harvest" if pid in batch_ids else ("upgraded" if st == "complete" else "authored"),
+            "source": "external_research" if pid in batch_ids else ("upgraded" if st == "complete" else "authored"),
         }
     for pid in PHASE3_IDS:
         papers[pid] = {

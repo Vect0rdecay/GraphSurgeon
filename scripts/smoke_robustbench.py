@@ -29,7 +29,7 @@ ALL_MODELS = [
     "Zhang2019Theoretically",
 ]
 
-DEFAULT_FIXTURE_ROOT = "/home/s0crates/nn_security_analyzer/robustbench_validation"
+DEFAULT_FIXTURE_ROOT = os.environ.get("GRAPH_SURGEON_FIXTURE_ROOT", "")
 
 
 @dataclass

@@ -1,6 +1,6 @@
 {
   "description": "RobustBench ONNX models for integration tests",
-  "default_root": "/home/s0crates/nn_security_analyzer/robustbench_validation",
+  "default_root": "",
   "env_var": "GRAPH_SURGEON_FIXTURE_ROOT",
   "models": [
     "Andriushchenko2020Understanding.onnx",

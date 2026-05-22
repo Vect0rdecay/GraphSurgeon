@@ -5,7 +5,7 @@
 Run on every CI build (no external ONNX files required):
 
 ```bash
-/home/s0crates/graph-surgeon/.venv/bin/python -m pytest tests/test_graph_surgeon.py -v
+.venv/bin/python -m pytest tests/test_graph_surgeon.py -v
 ```
 
 ## Dependencies
@@ -20,15 +20,11 @@ No PyTorch or CUDA toolkit is required.
 
 Integration tests load RobustBench ONNX models from a directory outside this repo.
 
-Default fixture root:
-
-`/home/s0crates/nn_security_analyzer/robustbench_validation`
-
-Override with:
+Set fixture root (required for integration tests):
 
 ```bash
-export GRAPH_SURGEON_FIXTURE_ROOT=/path/to/robustbench_validation
-/home/s0crates/graph-surgeon/.venv/bin/python -m pytest tests/ -v -m integration
+export GRAPH_SURGEON_FIXTURE_ROOT=/path/to/onnx/fixtures
+.venv/bin/python -m pytest tests/ -v -m integration
 ```
 
 If fixtures are missing, integration tests are skipped.

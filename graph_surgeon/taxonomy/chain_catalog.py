@@ -1,4 +1,4 @@
-"""Long-form chain narratives (synced from Dagger GADGET_CHAIN_TAXONOMY research docs)."""
+"""Long-form chain narratives for catalog output (GraphSurgeon canonical)."""
 
 CHAIN_NARRATIVES: dict[str, str] = {
     "CHAIN-PATCH-ATTACK-SURFACE": (

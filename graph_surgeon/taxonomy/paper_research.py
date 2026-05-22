@@ -139,6 +139,22 @@ def extract_paper_section(numeric_id: str) -> Optional[str]:
     return f"{header}\n{body}"
 
 
+_RATIONALE_EXCLUDED_LINE = re.compile(
+    r"(?i)(severity\s+justification|cvss|flag\s+(this|as)\s+(a\s+)?vulnerab|"
+    r"\bCRITICAL\b|\bHIGH\b\s+tier|risk\s+score|exploitability\s+score)"
+)
+
+
+def _sanitize_chain_rationale(text: str) -> str:
+    """Drop maintainer severity tiers and legacy vulnerability framing from catalog output."""
+    kept: list[str] = []
+    for line in text.splitlines():
+        if _RATIONALE_EXCLUDED_LINE.search(line):
+            continue
+        kept.append(line)
+    return "\n".join(kept).strip()
+
+
 def extract_chain_rationale(chain_id: str) -> Optional[str]:
     text = _detection_rationale_text()
     if not text:
@@ -148,7 +164,10 @@ def extract_chain_rationale(chain_id: str) -> Optional[str]:
         return None
     pattern = rf"## {re.escape(needle)}.*?(?=\n## |\Z)"
     m = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
-    return m.group(0).strip() if m else None
+    if not m:
+        return None
+    body = _sanitize_chain_rationale(m.group(0).strip())
+    return body or None
 
 
 def resolve_paper(slug: str) -> Dict[str, Any]:

@@ -35,7 +35,7 @@ class GadgetStatus(Enum):
 
 
 class GadgetCategory(Enum):
-    """Category of vulnerability pattern."""
+    """Category of structural motif pattern."""
     INPUT_PREPROCESSING = "input_preprocessing"
     SPATIAL_AGGREGATION = "spatial_aggregation"
     FEATURE_FUSION = "feature_fusion"
@@ -96,7 +96,7 @@ class GadgetDefinition:
 GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
     
     # =========================================================================
-    # PHASE 1: Core CNN Vulnerabilities (Foundational)
+    # CNN classifier motifs (foundational)
     # =========================================================================
     
     "GAP_FC_HEAD": GadgetDefinition(
@@ -662,7 +662,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
     ),
     
     # =========================================================================
-    # PHASE 2: Object Detector Gadgets
+    # Object detector motifs
     # =========================================================================
     
     "OBJECTNESS_HEAD": GadgetDefinition(
@@ -861,7 +861,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
     ),
     
     # =========================================================================
-    # PHASE 3: ViT-Specific Gadgets
+    # ViT-specific motifs
     # =========================================================================
     
     "VIT_PATCH_EMBEDDING": GadgetDefinition(
@@ -959,7 +959,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
     ),
     
     # =========================================================================
-    # PHASE 6: EXTENDED AUDIO/ASR GADGETS
+    # Extended audio/ASR motifs
     # Research basis: Whisper analysis, CTC research, multilingual ASR
     # =========================================================================
     
@@ -1076,7 +1076,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
     ),
     
     # =========================================================================
-    # PHASE 6: EXTENDED MULTIMODAL GADGETS
+    # Extended multimodal motifs
     # Research basis: CLIP, multimodal attacks, cross-modal jailbreaks
     # =========================================================================
     
@@ -1194,7 +1194,7 @@ GADGET_REGISTRY: Dict[str, GadgetDefinition] = {
     ),
     
     # =========================================================================
-    # PHASE 6: STRUCTURAL/MISC GADGETS
+    # Structural / misc motifs
     # Research basis: Quantization attacks, LLaVA, 3D point cloud research
     # =========================================================================
     

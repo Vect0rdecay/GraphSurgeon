@@ -1,16 +1,11 @@
-"""
-ONNX input sensitivity probing (CPU, onnxruntime).
+#!/usr/bin/env python3
+"""Maintainer-only ONNX input sensitivity probe (CPU, onnxruntime).
 
-Optional runtime check: does model output change under small input noise?
-No gradient computation; uses onnxruntime only.
+Not part of the graph-surgeon CLI. Optional check: does model output change under
+small input noise? No gradient computation.
 
-Approach:
-1. Add random noise at domain-appropriate perturbation levels:
-   - Audio models: SNR levels (40dB, 30dB, 20dB, 10dB, 5dB)
-   - Vision models: Epsilon levels (0.001, 0.005, 0.01, 0.05, 0.1)
-2. Measure if model output changes
-3. Find the perturbation threshold where output starts changing
-4. Lower threshold = more vulnerable (matches Dagger's claims)
+Usage:
+  .venv/bin/python scripts/validate_sensitivity.py /path/to/model.onnx
 """
 
 import numpy as np
@@ -66,9 +61,9 @@ class SensitivityReport:
     sensitivity_score_ci_upper: Optional[float] = None  # 95% CI upper bound
     sensitivity_score_std: Optional[float] = None  # Standard deviation across samples
     
-    # Dagger comparison
-    dagger_risk_score: Optional[float] = None
-    correlation_valid: bool = False  # True if sensitivity matches Dagger's claim
+    # Optional comparison to an external structural report JSON
+    external_risk_score: Optional[float] = None
+    correlation_valid: bool = False
     
     # Test details
     perturbation_levels_tested: List[float] = None
@@ -95,7 +90,7 @@ class SensitivityReport:
             "sensitivity_threshold": self.sensitivity_threshold,
             "sensitivity_threshold_type": self.sensitivity_threshold_type,
             "sensitivity_score": self.sensitivity_score,
-            "dagger_risk_score": self.dagger_risk_score,
+            "external_risk_score": self.external_risk_score,
             "correlation_valid": self.correlation_valid,
             "perturbation_levels_tested": self.perturbation_levels_tested,
             "num_samples": self.num_samples,
@@ -153,7 +148,7 @@ class FastValidator:
     def validate_onnx_model(
         self,
         model_path: str,
-        dagger_report: Optional[Dict] = None,
+        external_report: Optional[Dict] = None,
         input_shape: Optional[Tuple] = None,
     ) -> SensitivityReport:
         """
@@ -161,7 +156,7 @@ class FastValidator:
         
         Args:
             model_path: Path to ONNX model
-            dagger_report: Optional Dagger analysis report for comparison
+            external_report: Optional external JSON report for comparison
             input_shape: Input shape (auto-detected if not provided)
         
         Returns:
@@ -212,14 +207,14 @@ class FastValidator:
             input_shape=input_shape,
             model_name=os.path.basename(model_path),
             model_path=model_path,
-            dagger_report=dagger_report,
+            external_report=external_report,
             model_domain="vision",
         )
     
     def validate_audio_model(
         self,
         model_path: str,
-        dagger_report: Optional[Dict] = None,
+        external_report: Optional[Dict] = None,
         sample_rate: int = 16000,
         duration: float = 3.0,
     ) -> SensitivityReport:
@@ -228,7 +223,7 @@ class FastValidator:
         
         Args:
             model_path: Path to ONNX audio model
-            dagger_report: Optional Dagger report
+            external_report: Optional external structural report
             sample_rate: Audio sample rate
             duration: Audio duration in seconds
         
@@ -275,7 +270,7 @@ class FastValidator:
             input_shape=input_shape,
             model_name=os.path.basename(model_path),
             model_path=model_path,
-            dagger_report=dagger_report,
+            external_report=external_report,
             model_domain="audio",
         )
     
@@ -285,7 +280,7 @@ class FastValidator:
         input_shape: Tuple,
         model_name: str,
         model_path: str,
-        dagger_report: Optional[Dict],
+        external_report: Optional[Dict],
         model_domain: str = "audio",  # "audio" or "vision"
     ) -> SensitivityReport:
         """Run the actual sensitivity test with domain-appropriate metrics."""
@@ -412,25 +407,20 @@ class FastValidator:
             print(f"Sensitivity threshold: {sensitivity_threshold} dB")
         print(f"Sensitivity score: {sensitivity_score:.1f}/100")
         
-        # Compare with Dagger if available
-        dagger_risk = None
+        # Compare with external report if available
+        external_risk = None
         correlation_valid = False
-        if dagger_report:
-            dagger_risk = dagger_report.get("overall_risk_score", 
-                          dagger_report.get("adversarial_perturbation_risk", 0))
+        if external_report:
+            external_risk = external_report.get("overall_risk_score", 
+                          external_report.get("adversarial_perturbation_risk", 0))
             
-            # Check if Dagger's risk score correlates with our sensitivity
-            dagger_high = dagger_risk > 50
+            # Check if external risk score correlates with sensitivity
+            external_high = external_risk > 50
             sensitivity_high = sensitivity_score > 50
-            correlation_valid = (dagger_high == sensitivity_high)
+            correlation_valid = (external_high == sensitivity_high)
             
-            print(f"\nDagger risk score: {dagger_risk:.1f}/100")
-            print(f"Correlation: {'VALID' if correlation_valid else 'MISMATCH'}")
-            
-            if correlation_valid:
-                print("  Dagger's vulnerability claim is SUPPORTED by sensitivity test")
-            else:
-                print("  Dagger's vulnerability claim needs review")
+            print(f"\nExternal risk score: {external_risk:.1f}/100")
+            print(f"Correlation: {'aligned' if correlation_valid else 'mismatch'}")
         
         # Create report with domain-appropriate fields
         report = SensitivityReport(
@@ -440,7 +430,7 @@ class FastValidator:
             sensitivity_threshold_type=perturbation_type,
             sensitivity_score=sensitivity_score,
             model_domain=model_domain,
-            dagger_risk_score=dagger_risk,
+            external_risk_score=external_risk,
             correlation_valid=correlation_valid,
             perturbation_levels_tested=perturbation_levels,
             results_by_level=results_by_level,
@@ -707,26 +697,26 @@ class FastValidator:
         print(f"\nReport saved to: {filepath}")
 
 
-def quick_validate(model_path: str, dagger_report_path: Optional[str] = None) -> SensitivityReport:
+def quick_validate(model_path: str, external_report_path: Optional[str] = None) -> SensitivityReport:
     """
     Quick validation function for command-line use.
     
     Args:
         model_path: Path to ONNX model
-        dagger_report_path: Optional path to Dagger JSON report
+        external_report_path: Optional path to external JSON report
     
     Returns:
         SensitivityReport
     """
-    dagger_report = None
-    if dagger_report_path and os.path.exists(dagger_report_path):
-        with open(dagger_report_path) as f:
-            dagger_report = json.load(f)
+    external_report = None
+    if external_report_path and os.path.exists(external_report_path):
+        with open(external_report_path) as f:
+            external_report = json.load(f)
     
     validator = FastValidator(num_samples=5)
     
     # Detect if audio model based on path
     if "whisper" in model_path.lower() or "wav2vec" in model_path.lower() or "audio" in model_path.lower():
-        return validator.validate_audio_model(model_path, dagger_report)
+        return validator.validate_audio_model(model_path, external_report)
     else:
-        return validator.validate_onnx_model(model_path, dagger_report)
+        return validator.validate_onnx_model(model_path, external_report)

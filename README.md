@@ -61,7 +61,7 @@ Use `catalog --gadget` or `catalog --chain` to look up `research_basis`, paper a
 
 - Authoring spec: `graph_surgeon/taxonomy/data/RESEARCH_NOTE_TEMPLATE.md`
 - Coverage: `.venv/bin/graph-surgeon catalog --coverage` (or `python -m graph_surgeon catalog --coverage` from the venv)
-- Rebuild after bulk edits: `.venv/bin/python scripts/build_research_corpus.py`
+- Optional rebuild after bulk edits: `GRAPH_SURGEON_RESEARCH_SOURCE=/path/to/research .venv/bin/python scripts/build_research_corpus.py`
 
 ## Python API
 
@@ -116,7 +116,7 @@ Unit tests (no large ONNX files):
 Integration tests (RobustBench corpus via env var):
 
 ```bash
-export GRAPH_SURGEON_FIXTURE_ROOT=/home/s0crates/nn_security_analyzer/robustbench_validation
+export GRAPH_SURGEON_FIXTURE_ROOT=/path/to/onnx/fixtures
 .venv/bin/python -m pytest tests/ -v -m integration
 ```
 
@@ -127,6 +127,12 @@ Smoke script (pilot models by default):
 ```
 
 See `tests/README.md`.
+
+## Maintainer notes
+
+
+
+***REMOVED***
 
 ## License
 

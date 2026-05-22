@@ -1,9 +1,9 @@
 # GraphSurgeon Reverse-Engineering Walkthrough: `Standard.onnx`
 
-**Model path:** `/home/s0crates/nn_security_analyzer/robustbench_validation/Standard.onnx`  
-**External weights:** `Standard.onnx.data` (present, ~146 MB)  
+**Model path:** `$GRAPH_SURGEON_FIXTURE_ROOT/Standard.onnx` (RobustBench CIFAR export)  
+**External weights:** `Standard.onnx.data` (when present alongside the model)  
 **Validation date:** 2026-05-22  
-**Tool:** GraphSurgeon (`graph-surgeon` from `/home/s0crates/graph-surgeon/.venv`)
+**Tool:** GraphSurgeon (`graph-surgeon` or `python -m graph_surgeon` from the project venv)
 
 This document records an end-to-end GraphSurgeon CLI validation on one ONNX artifact. Findings describe **structural motifs** and **attack landscape** (what attack classes the graph topology makes architecturally plausible). They do not measure exploitability, robustness training, or deployment hardening.
 
@@ -173,9 +173,10 @@ Removing nodes on the sole path to `output` (e.g. `node_linear`, `node_avg_pool2
 Environment:
 
 ```bash
-cd /home/s0crates/graph-surgeon
+export GRAPH_SURGEON_FIXTURE_ROOT=/path/to/onnx/fixtures
+cd graph-surgeon
 GS=.venv/bin/graph-surgeon
-MODEL=/home/s0crates/nn_security_analyzer/robustbench_validation/Standard.onnx
+MODEL="$GRAPH_SURGEON_FIXTURE_ROOT/Standard.onnx"
 ```
 
 | Purpose | Command |
@@ -198,31 +199,4 @@ MODEL=/home/s0crates/nn_security_analyzer/robustbench_validation/Standard.onnx
 | Validate edit | `$GS edit validate /tmp/gs_standard_edited.onnx --level structural` |
 | Compare graphs | `$GS diff $MODEL /tmp/gs_standard_edited.onnx` |
 
-CLI regression (optional after changes): `.venv/bin/python -m pytest tests/test_cli.py -q` → **6 passed**.
-
----
-
-## CLI validation log (this session)
-
-| Command | Status |
-|---------|--------|
-| `graph-surgeon --help` | OK |
-| `inspect` | OK |
-| `topology` | OK |
-| `topology --json` | OK |
-| `patterns` | OK |
-| `motifs -o /tmp/gs_standard_motifs.json` | OK |
-| `flow` | OK |
-| `catalog` | OK |
-| `catalog --gadget GAP_FC_HEAD` | OK (reference; motif not in graph) |
-| `catalog --gadget NORMALIZER` | OK |
-| `catalog --chain CHAIN-PATCH-ATTACK-SURFACE` | OK (reference; chain not in motifs) |
-| `catalog --chain CHAIN-SHADOWLOGIC-INJECTION-SUSCEPTIBILITY` | OK |
-| `catalog --coverage` | OK |
-| `catalog --technique AML-ADV-002` | OK |
-| `operators --op Conv` | OK |
-| `edit validate --level loadable` | OK |
-| `edit remove-node` + `edit validate --level structural` | OK |
-| `diff` | OK |
-
-No CLI failures required fixes during this validation run.
+CLI regression (optional after changes): `.venv/bin/python -m pytest tests/test_cli.py -q`

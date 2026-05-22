@@ -502,7 +502,7 @@ if node.op_type == "Add":
 
 ## Deployment-context motifs (export framing)
 
-CLI and JSON export use registry titles only: no severity tiers, CVSS, or CRITICAL/HIGH labels. Internal `severity_modifiers` in `CHAIN_REGISTRY` are catalog metadata, not user-facing scores.
+CLI and JSON export use registry titles only: no severity tiers, CVSS, or CRITICAL/HIGH labels. Modifier motif keys in `CHAIN_REGISTRY` are internal composition hints, not user-facing risk scores.
 
 ---
 

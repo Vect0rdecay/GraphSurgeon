@@ -593,58 +593,6 @@ class TestMetadata:
         value = surgeon.get_metadata(simple_model, 'nonexistent_key')
         assert value is None
     
-    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
-    def test_record_graft(self, simple_model):
-        """Should record graft in metadata."""
-        surgeon = GraphSurgeon(verbose=False)
-        
-        surgeon.record_graft(
-            simple_model, 
-            'INSERT_MAXPOOL', 
-            'conv1_out',
-            details={'kernel': [2, 2]}
-        )
-        
-        history = surgeon.get_graft_history(simple_model)
-        assert len(history) == 1
-        assert history[0]['graft_type'] == 'INSERT_MAXPOOL'
-        assert history[0]['target_node'] == 'conv1_out'
-        assert history[0]['details']['kernel'] == [2, 2]
-    
-    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
-    def test_record_multiple_grafts(self, simple_model):
-        """Should record multiple grafts in order."""
-        surgeon = GraphSurgeon(verbose=False)
-        
-        surgeon.record_graft(simple_model, 'GRAFT_A', 'node1')
-        surgeon.record_graft(simple_model, 'GRAFT_B', 'node2')
-        surgeon.record_graft(simple_model, 'GRAFT_C', 'node3')
-        
-        history = surgeon.get_graft_history(simple_model)
-        assert len(history) == 3
-        assert history[0]['graft_type'] == 'GRAFT_A'
-        assert history[1]['graft_type'] == 'GRAFT_B'
-        assert history[2]['graft_type'] == 'GRAFT_C'
-    
-    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
-    def test_graft_history_empty(self, simple_model):
-        """Should return empty list for model with no grafts."""
-        surgeon = GraphSurgeon(verbose=False)
-        
-        history = surgeon.get_graft_history(simple_model)
-        assert history == []
-    
-    @pytest.mark.skipif(not ONNX_AVAILABLE, reason="ONNX not available")
-    def test_graft_has_timestamp(self, simple_model):
-        """Graft records should have timestamp."""
-        surgeon = GraphSurgeon(verbose=False)
-        
-        surgeon.record_graft(simple_model, 'TEST_GRAFT', 'test_node')
-        
-        history = surgeon.get_graft_history(simple_model)
-        assert 'timestamp' in history[0]
-        assert len(history[0]['timestamp']) > 0
-
 
 class TestExistingMethods:
     """Tests for pre-existing GraphSurgeon methods to ensure they still work."""
