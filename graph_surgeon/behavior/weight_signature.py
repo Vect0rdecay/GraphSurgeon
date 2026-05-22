@@ -1,6 +1,5 @@
-"""Behavior extra module."""
 """
-Weight Distribution Analyzer for Adversarial Training Detection
+ONNX weight distribution analysis for reverse engineering.
 
 This module analyzes ONNX model weight distributions to detect whether
 a model was likely adversarially trained. Based on empirical validation
@@ -146,61 +145,6 @@ def analyze_onnx_weights(model_path: str,
     )
     
     # Trigger classification
-    result.__post_init__()
-    
-    return result
-
-
-def analyze_pytorch_model_weights(model, min_tensor_size: int = 100) -> WeightAnalysisResult:
-    """
-    Analyze weight distributions in a PyTorch model.
-    
-    Args:
-        model: PyTorch model (nn.Module)
-        min_tensor_size: Minimum tensor size to include
-        
-    Returns:
-        WeightAnalysisResult with kurtosis statistics and AT detection
-    """
-    import torch
-    
-    kurtosis_values = []
-    total_params = 0
-    
-    for name, param in model.named_parameters():
-        arr = param.detach().cpu().numpy()
-        total_params += arr.size
-        
-        if arr.size >= min_tensor_size:
-            mean = np.mean(arr)
-            std = np.std(arr)
-            if std > 1e-10:
-                kurtosis = ((arr - mean) ** 4).mean() / (std ** 4)
-                kurtosis_values.append(kurtosis)
-    
-    if not kurtosis_values:
-        return WeightAnalysisResult(
-            avg_kurtosis=3.0,
-            std_kurtosis=0.0,
-            min_kurtosis=3.0,
-            max_kurtosis=3.0,
-            num_weight_tensors=0,
-            total_parameters=total_params,
-            detected_training=TrainingType.UNCERTAIN,
-            confidence=0.0,
-        )
-    
-    result = WeightAnalysisResult(
-        avg_kurtosis=float(np.mean(kurtosis_values)),
-        std_kurtosis=float(np.std(kurtosis_values)),
-        min_kurtosis=float(np.min(kurtosis_values)),
-        max_kurtosis=float(np.max(kurtosis_values)),
-        num_weight_tensors=len(kurtosis_values),
-        total_parameters=total_params,
-        detected_training=TrainingType.STANDARD,
-        confidence=0.0,
-    )
-    
     result.__post_init__()
     
     return result

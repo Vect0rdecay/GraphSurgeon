@@ -127,13 +127,10 @@ def cmd_topology(args):
 
 def cmd_motifs(args):
     from graph_surgeon.parsers.onnx_parser import analyze_onnx_graph
-    from graph_surgeon.analysis.motifs import export_report_json
 
     report = analyze_onnx_graph(args.model, output_path=args.output, verbose=True)
     if args.flow and report.model_flow_description:
         print(report.model_flow_description)
-    if args.output:
-        export_report_json(report, args.output)
     return 0
 
 

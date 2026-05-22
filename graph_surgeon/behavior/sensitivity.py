@@ -1,9 +1,8 @@
-"""Behavior extra module."""
 """
-Fast Validation Module (CPU-friendly)
+ONNX input sensitivity probing (CPU, onnxruntime).
 
-Validates Dagger's vulnerability claims using simple perturbation sensitivity tests.
-No gradient computation required - runs in seconds on CPU.
+Optional runtime check: does model output change under small input noise?
+No gradient computation; uses onnxruntime only.
 
 Approach:
 1. Add random noise at domain-appropriate perturbation levels:

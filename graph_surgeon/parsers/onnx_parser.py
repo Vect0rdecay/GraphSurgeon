@@ -399,7 +399,7 @@ def analyze_onnx_graph(filepath: str, output_path: str = None, verbose: bool = F
     if verbose:
         print(f"\nMotif Analysis Complete")
         print(f"  Overall Risk Score: {report.overall_risk_score:.1f}/100")
-        print(f"  Total structural findings: {len(report.structural_findings)}")
+        print(f"  Total structural findings: {len(report.vulnerabilities)}")
     
     # Export if requested
     if output_path:
@@ -431,11 +431,11 @@ def quick_scan(filepath: str) -> str:
         f"  - Model Extraction Risk: {report.extraction_risk_score:.1f}",
         f"  - Privacy Risk: {report.privacy_risk_score:.1f}",
         f"",
-        f"Findings: {len(report.structural_findings)} structural_findings",
+        f"Findings: {len(report.vulnerabilities)} structural findings",
     ]
     
     # Add critical/high findings
-    critical = [v for v in report.structural_findings if v.severity.value in ["critical", "high"]]
+    critical = [v for v in report.vulnerabilities if v.severity.value in ["critical", "high"]]
     if critical:
         lines.append(f"\nCritical/High Severity Issues:")
         for v in critical[:5]:

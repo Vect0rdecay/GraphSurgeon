@@ -1606,7 +1606,7 @@ class CNNSecurityAuditor:
                            "or use BlurPool for anti-aliased downsampling.",
                 priority="high",
                 affected_checks=[c.id for c in maxpool_issues],
-                implementation_notes="torch.nn.AvgPool2d or antialiased-cnns library for BlurPool"
+                implementation_notes="Average pooling (AvgPool) or antialiased-cnns library for BlurPool"
             ))
         
         # Anti-alias downsampling
@@ -1645,7 +1645,7 @@ class CNNSecurityAuditor:
                            "and prevent adversarial amplification.",
                 priority="medium",
                 affected_checks=[c.id for c in concat_checks],
-                implementation_notes="torch.clamp or custom activation bounding"
+                implementation_notes="Clamp activations or use bounded activation after concat"
             ))
         
         # GroupNorm instead of BatchNorm
@@ -1658,7 +1658,7 @@ class CNNSecurityAuditor:
                            "as it doesn't depend on batch statistics.",
                 priority="medium",
                 affected_checks=[c.id for c in bn_checks],
-                implementation_notes="torch.nn.GroupNorm with num_groups=32 typically"
+                implementation_notes="GroupNorm with num_groups=32 typically"
             ))
         
         # Feature denoising before GAP
@@ -1684,7 +1684,7 @@ class CNNSecurityAuditor:
                            "adversarial perturbation amplification.",
                 priority="high",
                 affected_checks=[c.id for c in linear_issues],
-                implementation_notes="torch.nn.utils.spectral_norm or explicit Lipschitz training"
+                implementation_notes="Spectral normalization or explicit Lipschitz training"
             ))
         
         return recommendations

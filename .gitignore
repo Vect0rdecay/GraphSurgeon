@@ -1,30 +1,166 @@
+# =============================================================================
 # Python
+# =============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+*.egg
 *.egg-info/
 .eggs/
 dist/
 build/
+wheels/
+share/python-wheels/
+pip-wheel-metadata/
+*.manifest
+*.spec
+.Python
 
-# Virtual environments
-venv/
+# =============================================================================
+# Virtual environments (all common layouts)
+# =============================================================================
 .venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.virtualenv/
+virtualenv/
+.virtualenvs/
+.python-version
+pyvenv.cfg
+pip-log.txt
+pip-delete-this-directory.txt
 
-# ONNX binaries and caches
+# =============================================================================
+# Sensitive / credentials / local secrets
+# =============================================================================
+.env
+.env.*
+!.env.example
+!.env.template
+secrets/
+credentials/
+private/
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa
+id_rsa.*
+id_dsa
+id_ed25519
+id_ed25519.*
+*.credentials
+*.token
+*.tokens
+auth.json
+credentials.json
+service-account*.json
+.aws/
+.gnupg/
+.netrc
+*.kdbx
+
+# =============================================================================
+# Internal planning, deliberation, AI assistant artifacts
+# =============================================================================
+.cursor/
+.cursorrules.local
+.plans/
+plans/
+internal/
+deliberation/
+scratch/
+notes/
+*.plan.md
+*HANDOFF*
+*handoff*
+AGENT_*.md
+.agent/
+.agent-transcripts/
+agent-transcripts/
+.copilot/
+.aider*
+.continue/
+.claude/
+.chat/
+prompts/
+prompt-*.md
+*-deliberation*
+*-internal*
+TODO.private*
+TODO.local*
+*.draft.md
+SYNC.md
+
+# =============================================================================
+# ONNX binaries, model artifacts, caches
+# =============================================================================
 *.onnx
 *.onnx.data
+*.pt
+*.pth
+*.pb
+*.tflite
+*.mlmodel
 .cache/
 tests/.fixtures/
+model_zoo/
+checkpoints/
+weights/
 
-# Test and analysis output
+# =============================================================================
+# Test, coverage, and analysis output
+# =============================================================================
+tests/output/
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.hypothesis/
 dual_mode_results/
 batch_analysis_results/
+validation_results/
+smoke_report*.json
+*.smoke.json
 
-# IDE
+# =============================================================================
+# Logs and local runtime
+# =============================================================================
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# IDE and editor
+# =============================================================================
 .idea/
 .vscode/
-*.swp
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.settings/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
