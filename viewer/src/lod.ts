@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { BuiltScene } from './scene-builder';
 
-const LABEL_DISTANCE_THRESHOLD = 40;
+const LABEL_DISTANCE_THRESHOLD = 80;
 
 export function updateLabelLOD(
   built: BuiltScene,

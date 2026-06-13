@@ -42,9 +42,9 @@ function init() {
 
   threeScene = new THREE.Scene();
   threeScene.background = new THREE.Color(0x000000);
-  threeScene.fog = new THREE.FogExp2(0x000000, 0.008);
+  threeScene.fog = new THREE.FogExp2(0x000000, 0.002);
 
-  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
   camera.position.set(0, 5, 30);
 
   controls = new OrbitControls(camera, renderer.domElement);
@@ -55,16 +55,16 @@ function init() {
   controls.minDistance = 5;
   controls.maxDistance = 2000;
 
-  const ambient = new THREE.AmbientLight(0x222244, 0.5);
+  const ambient = new THREE.AmbientLight(0x334466, 1.0);
   threeScene.add(ambient);
 
-  const point1 = new THREE.PointLight(0x00ffff, 1.5, 100);
-  point1.position.set(10, 10, 10);
-  threeScene.add(point1);
+  const dir1 = new THREE.DirectionalLight(0x00ffff, 1.5);
+  dir1.position.set(1, 1, 1);
+  threeScene.add(dir1);
 
-  const point2 = new THREE.PointLight(0xff00ff, 1.0, 100);
-  point2.position.set(-10, -10, -10);
-  threeScene.add(point2);
+  const dir2 = new THREE.DirectionalLight(0xff00ff, 1.0);
+  dir2.position.set(-1, -1, -1);
+  threeScene.add(dir2);
 
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(threeScene, camera));
@@ -293,6 +293,10 @@ function loadScene(data: SceneGraph) {
   builtScene = buildThreeScene(data);
   threeScene.add(builtScene.group);
 
+  const graphSpan = (data.model.max_depth + 1) * 3.0;
+  const fogDensity = Math.min(0.002, 2.0 / Math.max(graphSpan, 100));
+  (threeScene.fog as THREE.FogExp2).density = fogDensity;
+
   const hud = document.getElementById('hud-info')!;
   hud.innerHTML = `
     ${data.model.name} | ${data.model.total_nodes} nodes | depth ${data.model.max_depth} | opset ${data.model.opset}
@@ -372,28 +376,56 @@ function buildControlPanel(data: SceneGraph) {
   flowStatus.style.cssText = 'color:#0ff;margin-bottom:12px;min-height:16px;';
   panel.appendChild(flowStatus);
 
-  // Flow description
+  // Flow description — show a clickable button that opens a full overlay
   if (data.model.flow_description) {
-    const flowDesc = document.createElement('div');
-    flowDesc.style.cssText = `
+    const flowDescBtn = document.createElement('button');
+    flowDescBtn.textContent = 'VIEW MODEL FLOW';
+    flowDescBtn.style.cssText = `
+      background: transparent;
+      border: 1px solid #0ff;
       color: #0ff;
+      font-family: 'Courier New', monospace;
       font-size: 11px;
+      padding: 4px 8px;
+      cursor: pointer;
+      width: 100%;
       margin-bottom: 12px;
-      max-height: 80px;
-      overflow-y: auto;
-      border-left: 2px solid #333;
-      padding-left: 8px;
+      text-shadow: 0 0 4px #0ff;
     `;
-    flowDesc.textContent = data.model.flow_description;
-    panel.appendChild(flowDesc);
+    flowDescBtn.addEventListener('click', () => {
+      showFlowOverlay(data.model.flow_description!);
+    });
+    panel.appendChild(flowDescBtn);
   }
 
-  // Motifs section
+  // Motifs section — collapsible header
   if (data.motifs.length > 0 || data.chains.length > 0) {
-    const motifHeader = document.createElement('div');
-    motifHeader.style.cssText = 'color:#ff00ff;margin-bottom:4px;text-shadow:0 0 6px #f0f;font-weight:bold;';
-    motifHeader.textContent = 'MOTIFS & CHAINS';
-    panel.appendChild(motifHeader);
+    const motifToggle = document.createElement('button');
+    motifToggle.innerHTML = `<span style="color:#ff00ff;text-shadow:0 0 6px #f0f">MOTIFS & CHAINS (${data.motifs.length + data.chains.length})</span> <span id="motif-arrow" style="color:#ff00ff">&#9660;</span>`;
+    motifToggle.style.cssText = `
+      background: transparent;
+      border: 1px solid #ff00ff;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      padding: 4px 8px;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 4px;
+      text-align: left;
+      box-shadow: 0 0 6px rgba(255,0,255,0.15);
+    `;
+
+    const motifBody = document.createElement('div');
+    motifBody.id = 'motif-body';
+    motifBody.style.cssText = 'display:none;';
+
+    motifToggle.addEventListener('click', () => {
+      const open = motifBody.style.display !== 'none';
+      motifBody.style.display = open ? 'none' : 'block';
+      motifToggle.querySelector('#motif-arrow')!.innerHTML = open ? '&#9660;' : '&#9650;';
+    });
+
+    panel.appendChild(motifToggle);
 
     const clearBtn = document.createElement('button');
     clearBtn.textContent = 'CLEAR HIGHLIGHT';
@@ -412,14 +444,15 @@ function buildControlPanel(data: SceneGraph) {
       if (builtScene) clearHighlight(builtScene);
       closeCatalog();
     });
-    panel.appendChild(clearBtn);
+    motifBody.appendChild(clearBtn);
 
     const motifList = buildMotifList(data);
     motifList.style.cssText = `
       max-height: 300px;
       overflow-y: auto;
     `;
-    panel.appendChild(motifList);
+    motifBody.appendChild(motifList);
+    panel.appendChild(motifBody);
 
     const style = document.createElement('style');
     style.textContent = `
@@ -493,9 +526,68 @@ function frameAll() {
   const fitDist = maxDim / (2 * Math.tan(fov / 2));
   const dist = Math.max(fitDist * 2.5, 40);
 
-  camera.position.set(center.x, center.y + dist * 0.4, center.z + dist);
-  camera.far = Math.max(dist * 4, 2000);
+  camera.position.set(center.x + dist * 0.3, center.y + dist * 0.5, center.z + dist);
+  camera.far = Math.max(dist * 6, 10000);
   camera.updateProjectionMatrix();
   controls.target.copy(center);
   controls.update();
+}
+
+function showFlowOverlay(text: string) {
+  let overlay = document.getElementById('flow-overlay');
+  if (overlay) { overlay.remove(); }
+
+  overlay = document.createElement('div');
+  overlay.id = 'flow-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px;
+    overflow-y: auto;
+  `;
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'CLOSE';
+  closeBtn.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 30px;
+    background: transparent;
+    border: 1px solid #ff0066;
+    color: #ff0066;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    padding: 6px 16px;
+    cursor: pointer;
+    z-index: 1001;
+    text-shadow: 0 0 6px #ff0066;
+  `;
+  closeBtn.addEventListener('click', () => overlay!.remove());
+
+  const content = document.createElement('pre');
+  content.style.cssText = `
+    color: #0ff;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 800px;
+    width: 100%;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    text-shadow: 0 0 4px rgba(0, 255, 255, 0.3);
+  `;
+  content.textContent = text;
+
+  overlay.appendChild(closeBtn);
+  overlay.appendChild(content);
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay!.remove();
+  });
 }
