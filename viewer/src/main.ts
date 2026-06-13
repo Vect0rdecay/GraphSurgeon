@@ -10,6 +10,9 @@ import { highlightMotif, clearHighlight, buildMotifList } from './motifs';
 import { initFlow, startFlow, stopFlow, isFlowPlaying, updateFlow } from './flow';
 import { initCatalogDrawer, showCatalogEntry, closeCatalog } from './catalog-drawer';
 import { initEditMode, showContextMenu, hideContextMenu } from './edit-mode';
+import { initSearch, updateSearchResults, pulseNode } from './search';
+import { initDepthScrubber, updateScrubber, flyToBand } from './depth-scrubber';
+import { updateLabelLOD } from './lod';
 
 let renderer: THREE.WebGLRenderer;
 let threeScene: THREE.Scene;
@@ -84,6 +87,12 @@ function init() {
   initCatalogDrawer();
   setupDragDrop();
   setupEditMode();
+  initSearch((nodeId) => {
+    if (builtScene) pulseNode(nodeId, builtScene, camera, controls);
+  });
+  initDepthScrubber((position) => {
+    if (builtScene && sceneData) flyToBand(position, sceneData, builtScene, camera, controls);
+  });
   buildLegend();
   renderer.domElement.addEventListener('contextmenu', onRightClick);
   animate();
@@ -96,6 +105,10 @@ function animate() {
 
   if (builtScene && sceneData && isFlowPlaying()) {
     updateFlow(delta, builtScene, camera, controls);
+  }
+
+  if (builtScene) {
+    updateLabelLOD(builtScene, camera);
   }
 
   composer.render();
@@ -281,6 +294,8 @@ function loadScene(data: SceneGraph) {
     }
   });
 
+  updateSearchResults(data);
+  updateScrubber(data);
   buildControlPanel(data);
   frameAll();
 }
