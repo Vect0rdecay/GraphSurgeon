@@ -26,8 +26,8 @@ export function buildThreeScene(data: SceneGraph): BuiltScene {
     const geom = getGeometryForOp(node.op_type);
 
     const size = node.param_count > 0
-      ? 0.5 + Math.log10(node.param_count + 1) * 0.15
-      : 0.8;
+      ? 0.3 + Math.log10(node.param_count + 1) * 0.08
+      : 0.4;
 
     const mesh = new THREE.Mesh(
       geom,
@@ -136,7 +136,7 @@ function makeLabel(node: SceneNode, color: number): THREE.Sprite {
     depthTest: false,
   });
   const sprite = new THREE.Sprite(mat);
-  sprite.scale.set(3, 0.75, 1);
+  sprite.scale.set(2, 0.5, 1);
 
   return sprite;
 }

@@ -26,6 +26,8 @@ let mouse: THREE.Vector2;
 let hoveredMesh: THREE.Mesh | null = null;
 let selectedMesh: THREE.Mesh | null = null;
 let clock: THREE.Clock;
+const keysDown = new Set<string>();
+const FLY_SPEED = 30;
 
 init();
 loadDefaultScene();
@@ -97,12 +99,40 @@ function init() {
   });
   buildLegend();
   renderer.domElement.addEventListener('contextmenu', onRightClick);
+
+  window.addEventListener('keydown', (e) => {
+    if ((e.target as HTMLElement).tagName === 'INPUT') return;
+    keysDown.add(e.key.toLowerCase());
+  });
+  window.addEventListener('keyup', (e) => {
+    keysDown.delete(e.key.toLowerCase());
+  });
+
   animate();
 }
 
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
+
+  if (keysDown.size > 0) {
+    const move = new THREE.Vector3();
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    const right = new THREE.Vector3().crossVectors(forward, camera.up).normalize();
+    const speed = FLY_SPEED * delta;
+
+    if (keysDown.has('w')) move.add(forward.clone().multiplyScalar(speed));
+    if (keysDown.has('s')) move.add(forward.clone().multiplyScalar(-speed));
+    if (keysDown.has('a')) move.add(right.clone().multiplyScalar(-speed));
+    if (keysDown.has('d')) move.add(right.clone().multiplyScalar(speed));
+    if (keysDown.has('q') || keysDown.has(' ')) move.y += speed;
+    if (keysDown.has('e') || keysDown.has('shift')) move.y -= speed;
+
+    camera.position.add(move);
+    controls.target.add(move);
+  }
+
   controls.update();
 
   if (builtScene && sceneData && isFlowPlaying()) {
@@ -300,6 +330,7 @@ function loadScene(data: SceneGraph) {
   const hud = document.getElementById('hud-info')!;
   hud.innerHTML = `
     ${data.model.name} | ${data.model.total_nodes} nodes | depth ${data.model.max_depth} | opset ${data.model.opset}
+    <div style="font-size:10px;color:#0aa;margin-top:2px">WASD fly | Q/E up/down | mouse orbit | scroll zoom | click node</div>
   `;
 
   initFlow(data, (index, nodeId) => {
@@ -329,7 +360,7 @@ function buildControlPanel(data: SceneGraph) {
     top: 80px;
     left: 16px;
     width: 220px;
-    max-height: calc(100vh - 100px);
+    max-height: calc(100vh - 280px);
     overflow-y: auto;
     color: #0ff;
     font-family: 'Courier New', monospace;
@@ -448,7 +479,7 @@ function buildControlPanel(data: SceneGraph) {
 
     const motifList = buildMotifList(data);
     motifList.style.cssText = `
-      max-height: 300px;
+      max-height: 150px;
       overflow-y: auto;
     `;
     motifBody.appendChild(motifList);
@@ -519,17 +550,22 @@ function frameAll() {
   if (!builtScene) return;
 
   const box = new THREE.Box3().setFromObject(builtScene.group);
-  const center = box.getCenter(new THREE.Vector3());
-  const size = box.getSize(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z);
-  const fov = camera.fov * (Math.PI / 180);
-  const fitDist = maxDim / (2 * Math.tan(fov / 2));
-  const dist = Math.max(fitDist * 2.5, 40);
+  const graphTop = new THREE.Vector3();
+  const graphBottom = new THREE.Vector3();
+  box.getCenter(graphTop);
+  box.getCenter(graphBottom);
+  graphTop.y = box.max.y;
+  graphBottom.y = box.min.y;
 
-  camera.position.set(center.x + dist * 0.3, center.y + dist * 0.5, center.z + dist);
-  camera.far = Math.max(dist * 6, 10000);
+  const size = box.getSize(new THREE.Vector3());
+  const graphSpan = Math.max(size.x, size.y, size.z);
+
+  camera.far = Math.max(graphSpan * 6, 10000);
   camera.updateProjectionMatrix();
-  controls.target.copy(center);
+
+  const startTarget = new THREE.Vector3(graphTop.x, graphTop.y, graphTop.z);
+  camera.position.set(startTarget.x, startTarget.y + 10, startTarget.z + 40);
+  controls.target.copy(startTarget);
   controls.update();
 }
 
