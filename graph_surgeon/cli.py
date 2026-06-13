@@ -109,6 +109,13 @@ Examples:
   graph-surgeon export-scene model.onnx --weights -o scene.json
 """
 
+_SERVE_EPILOG = """
+Examples:
+  graph-surgeon serve model.onnx
+  graph-surgeon serve model.onnx --port 8088
+  graph-surgeon serve model.onnx --host 0.0.0.0 --port 9000
+"""
+
 
 def _subparser(sub, name, *, help_text, description, epilog=""):
     return sub.add_parser(
@@ -135,7 +142,7 @@ def main(argv=None):
         dest="command",
         required=True,
         title="subcommands",
-        metavar="{inspect,topology,motifs,patterns,flow,catalog,operators,edit,diff,export-scene}",
+        metavar="{inspect,topology,motifs,patterns,flow,catalog,operators,edit,diff,export-scene,serve}",
     )
 
     # inspect
@@ -399,6 +406,35 @@ def main(argv=None):
     )
     p_scene.set_defaults(func=cmd_export_scene)
 
+    # serve
+    p_serve = _subparser(
+        sub,
+        "serve",
+        help_text="Launch 3D viewer with live API (requires [viz] extra)",
+        description=(
+            "Start a FastAPI server that serves the 3D viewer and exposes a JSON API "
+            "for scene data, node details, catalog lookups, and counterfactual editing."
+        ),
+        epilog=_SERVE_EPILOG,
+    )
+    p_serve.add_argument(
+        "model",
+        metavar="MODEL.onnx",
+        help="Path to the ONNX model file (required)",
+    )
+    p_serve.add_argument(
+        "--port",
+        type=int,
+        default=8088,
+        help="Port to listen on (default: 8088)",
+    )
+    p_serve.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host to bind to (default: 127.0.0.1)",
+    )
+    p_serve.set_defaults(func=cmd_serve)
+
     # diff
     p_diff = _subparser(
         sub,
@@ -612,6 +648,28 @@ def cmd_export_scene(args):
         print(f"Scene written to: {args.output}", file=sys.stderr)
     else:
         print(blob)
+    return 0
+
+
+def cmd_serve(args):
+    if not os.path.exists(args.model):
+        print(f"Error: file not found: {args.model}", file=sys.stderr)
+        return 1
+
+    try:
+        import uvicorn
+        from graph_surgeon.server.app import create_app
+    except ImportError:
+        print(
+            "Error: serve requires the [viz] extra.\n"
+            "Install with: pip install graph-surgeon[viz]",
+            file=sys.stderr,
+        )
+        return 1
+
+    app = create_app(args.model)
+    print(f"Serving {args.model} at http://{args.host}:{args.port}", file=sys.stderr)
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     return 0
 
 

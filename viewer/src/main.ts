@@ -9,6 +9,7 @@ import { getAllCategories } from './colors';
 import { highlightMotif, clearHighlight, buildMotifList } from './motifs';
 import { initFlow, startFlow, stopFlow, isFlowPlaying, updateFlow } from './flow';
 import { initCatalogDrawer, showCatalogEntry, closeCatalog } from './catalog-drawer';
+import { initEditMode, showContextMenu, hideContextMenu } from './edit-mode';
 
 let renderer: THREE.WebGLRenderer;
 let threeScene: THREE.Scene;
@@ -82,7 +83,9 @@ function init() {
 
   initCatalogDrawer();
   setupDragDrop();
+  setupEditMode();
   buildLegend();
+  renderer.domElement.addEventListener('contextmenu', onRightClick);
   animate();
 }
 
@@ -422,6 +425,32 @@ function buildControlPanel(data: SceneGraph) {
   }
 
   document.getElementById('app')!.appendChild(panel);
+}
+
+function onRightClick(event: MouseEvent) {
+  if (!builtScene || isFlowPlaying()) return;
+
+  event.preventDefault();
+  raycaster.setFromCamera(mouse, camera);
+  const meshes = [...builtScene.nodeObjects.values()];
+  const intersects = raycaster.intersectObjects(meshes);
+
+  if (intersects.length > 0) {
+    const nodeData = intersects[0].object.userData.nodeData as SceneNode;
+    showContextMenu(nodeData, event);
+  } else {
+    hideContextMenu();
+  }
+}
+
+function setupEditMode() {
+  const apiBase = window.location.origin;
+  initEditMode(apiBase, {
+    onSceneReload: (newScene: SceneGraph) => {
+      loadScene(newScene);
+    },
+    onDiffReceived: (_diff) => {},
+  });
 }
 
 function frameAll() {

@@ -19,6 +19,10 @@ dev = [
     "pytest>=7.0.0",
     "onnxruntime>=1.15.0",
 ]
+viz = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+]
 
 [project.scripts]
 graph-surgeon = "graph_surgeon.cli:main"
