@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 
 
 @dataclass
@@ -60,12 +60,24 @@ class SceneEdge:
 
 
 @dataclass
+class PaperRef:
+    slug: str
+    title: str
+
+
+@dataclass
 class SceneMotif:
     id: str
     title: str
     node_ids: List[str]
     description: str = ""
     catalog_ref: str = ""
+    attacks_enabled: List[str] = field(default_factory=list)
+    structural_significance: str = ""
+    confidence: str = ""
+    category: str = ""
+    research_basis: List[PaperRef] = field(default_factory=list)
+    detection_logic: str = ""
 
 
 @dataclass
@@ -73,6 +85,10 @@ class SceneChain:
     id: str
     node_ids: List[str]
     gadget_ids: List[str] = field(default_factory=list)
+    title: str = ""
+    description: str = ""
+    structural_significance: str = ""
+    research_basis: List[PaperRef] = field(default_factory=list)
 
 
 @dataclass

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from graph_surgeon.scene.schema import (
     SCHEMA_VERSION,
+    PaperRef,
     SceneChain,
     SceneEdge,
     SceneGraph,
@@ -312,13 +313,16 @@ def _build_edges(graph, initializer_names, graph_input_names) -> List[SceneEdge]
 
 
 def _extract_motifs_and_chains(report) -> Tuple[List[SceneMotif], List[SceneChain]]:
-    """Pull motifs and chains from a ModelSecurityReport, sanitized."""
+    """Pull motifs and chains from a ModelSecurityReport, enriched with registry data."""
     from graph_surgeon.reporting.sanitize import serialize_for_export
+    from graph_surgeon.taxonomy.gadget_registry import GADGET_REGISTRY, CHAIN_REGISTRY
 
     motifs: List[SceneMotif] = []
     chains: List[SceneChain] = []
 
     seen_motif_ids: Set[str] = set()
+    chain_map: Dict[str, SceneChain] = {}
+
     for finding in report.structural_findings:
         fid = finding.registry_id or finding.id
         if fid in seen_motif_ids:
@@ -333,21 +337,57 @@ def _extract_motifs_and_chains(report) -> Tuple[List[SceneMotif], List[SceneChai
         desc = safe.get("description", "") if isinstance(safe, dict) else ""
 
         if finding.chain_id:
-            chains.append(SceneChain(
-                id=finding.chain_id,
-                node_ids=node_ids,
-                gadget_ids=[fid],
-            ))
+            if finding.chain_id in chain_map:
+                chain_map[finding.chain_id].node_ids.extend(node_ids)
+                if fid not in chain_map[finding.chain_id].gadget_ids:
+                    chain_map[finding.chain_id].gadget_ids.append(fid)
+            else:
+                chain_def = CHAIN_REGISTRY.get(finding.chain_id, {})
+                chain_map[finding.chain_id] = SceneChain(
+                    id=finding.chain_id,
+                    node_ids=node_ids,
+                    gadget_ids=[fid],
+                    title=chain_def.get("name", finding.chain_id),
+                    description=chain_def.get("notes", ""),
+                    structural_significance=chain_def.get("structural_significance", ""),
+                    research_basis=_make_paper_refs(chain_def.get("research_basis", [])),
+                )
         else:
-            motifs.append(SceneMotif(
-                id=fid,
-                title=finding.title,
-                node_ids=node_ids,
-                description=desc,
-                catalog_ref=fid,
-            ))
+            gadget = GADGET_REGISTRY.get(fid)
+            if gadget:
+                motifs.append(SceneMotif(
+                    id=fid,
+                    title=finding.title,
+                    node_ids=node_ids,
+                    description=desc,
+                    catalog_ref=fid,
+                    attacks_enabled=list(gadget.attacks_enabled),
+                    structural_significance=gadget.structural_significance,
+                    confidence=gadget.confidence,
+                    category=gadget.category.value if hasattr(gadget.category, "value") else str(gadget.category),
+                    research_basis=_make_paper_refs(gadget.research_basis),
+                    detection_logic=gadget.detection_logic,
+                ))
+            else:
+                motifs.append(SceneMotif(
+                    id=fid,
+                    title=finding.title,
+                    node_ids=node_ids,
+                    description=desc,
+                    catalog_ref=fid,
+                ))
 
+    chains = list(chain_map.values())
     return motifs, chains
+
+
+def _make_paper_refs(slugs: List[str]) -> List[PaperRef]:
+    """Convert paper slug strings to PaperRef objects with human-readable titles."""
+    refs = []
+    for slug in slugs:
+        title = slug.replace("-", " ").replace("_", " ")
+        refs.append(PaperRef(slug=slug, title=title))
+    return refs
 
 
 def _serialize_attr(value: Any) -> Any:
