@@ -1,0 +1,349 @@
+{
+  "schema_version": "1.0",
+  "model": {
+    "name": "simple_cnn",
+    "format": "onnx",
+    "opset": 13,
+    "total_nodes": 9,
+    "max_depth": 8,
+    "inputs": [
+      {
+        "name": "input",
+        "shape": [
+          1,
+          3,
+          224,
+          224
+        ],
+        "dtype": "float32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "shape": [
+          1,
+          256
+        ],
+        "dtype": "float32"
+      }
+    ],
+    "flow_description": "## Model Flow Description\n\nThis model processes data through the following stages:\n\n### Stage 1: Feature Extraction\n\n- **conv1** (Conv): applies a [3, 3] convolution with 1 groups, producing ? feature maps\n\n### Stage 2: Activation\n\n- **relu1** (Relu): applies ReLU activation, zeroing negative values to introduce non-linearity\n\n### Stage 3: Feature Extraction\n\n- **conv2** (Conv): applies a [3, 3] convolution with 1 groups, producing ? feature maps\n\n### Stage 4: Activation\n\n- **relu2** (Relu): applies ReLU activation, zeroing negative values to introduce non-linearity\n\n### Stage 5: Spatial Reduction\n\n- **maxpool** (MaxPool): downsamples by taking maximum values in [2, 2] regions\n\n### Stage 6: Feature Extraction\n\n- **conv3** (Conv): applies a [3, 3] convolution with 1 groups, producing ? feature maps\n\n### Stage 7: Activation\n\n- **relu3** (Relu): applies ReLU activation, zeroing negative values to introduce non-linearity\n\n### Stage 8: Spatial Reduction\n\n- **gap** (GlobalAveragePool): collapses spatial dimensions by global averaging, preparing for classification\n\n### Stage 9: Tensor Reshaping\n\n- **flatten** (Flatten): reshapes multi-dimensional features into a flat vector\n"
+  },
+  "nodes": [
+    {
+      "id": "conv1",
+      "op_type": "Conv",
+      "category": "feature_extraction",
+      "depth": 0,
+      "position": "early",
+      "exec_index": 0,
+      "inputs": [
+        "input",
+        "conv1_weights"
+      ],
+      "outputs": [
+        "conv1_out"
+      ],
+      "attributes": {
+        "kernel_shape": [
+          3,
+          3
+        ],
+        "pads": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ]
+      },
+      "param_count": 1728,
+      "motif_ids": [
+        "CHAIN-SINGLE-MODALITY-VISION"
+      ],
+      "gadget_ids": [
+        "GAD-single-modality-conv1"
+      ]
+    },
+    {
+      "id": "relu1",
+      "op_type": "Relu",
+      "category": "activation",
+      "depth": 1,
+      "position": "early",
+      "exec_index": 1,
+      "inputs": [
+        "conv1_out"
+      ],
+      "outputs": [
+        "relu1_out"
+      ],
+      "attributes": {},
+      "param_count": 0,
+      "motif_ids": [],
+      "gadget_ids": []
+    },
+    {
+      "id": "conv2",
+      "op_type": "Conv",
+      "category": "feature_extraction",
+      "depth": 2,
+      "position": "middle",
+      "exec_index": 2,
+      "inputs": [
+        "relu1_out",
+        "conv2_weights"
+      ],
+      "outputs": [
+        "conv2_out"
+      ],
+      "attributes": {
+        "kernel_shape": [
+          3,
+          3
+        ],
+        "pads": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "strides": [
+          2,
+          2
+        ]
+      },
+      "param_count": 73728,
+      "motif_ids": [],
+      "gadget_ids": [
+        "GAD-alias-conv2"
+      ]
+    },
+    {
+      "id": "relu2",
+      "op_type": "Relu",
+      "category": "activation",
+      "depth": 3,
+      "position": "middle",
+      "exec_index": 3,
+      "inputs": [
+        "conv2_out"
+      ],
+      "outputs": [
+        "relu2_out"
+      ],
+      "attributes": {},
+      "param_count": 0,
+      "motif_ids": [],
+      "gadget_ids": []
+    },
+    {
+      "id": "maxpool",
+      "op_type": "MaxPool",
+      "category": "pooling",
+      "depth": 4,
+      "position": "middle",
+      "exec_index": 4,
+      "inputs": [
+        "relu2_out"
+      ],
+      "outputs": [
+        "maxpool_out"
+      ],
+      "attributes": {
+        "kernel_shape": [
+          2,
+          2
+        ],
+        "strides": [
+          2,
+          2
+        ]
+      },
+      "param_count": 0,
+      "motif_ids": [],
+      "gadget_ids": [
+        "GAD-maxpool-maxpool"
+      ]
+    },
+    {
+      "id": "conv3",
+      "op_type": "Conv",
+      "category": "feature_extraction",
+      "depth": 5,
+      "position": "middle",
+      "exec_index": 5,
+      "inputs": [
+        "maxpool_out",
+        "conv3_weights"
+      ],
+      "outputs": [
+        "conv3_out"
+      ],
+      "attributes": {
+        "kernel_shape": [
+          3,
+          3
+        ],
+        "pads": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ]
+      },
+      "param_count": 294912,
+      "motif_ids": [],
+      "gadget_ids": []
+    },
+    {
+      "id": "relu3",
+      "op_type": "Relu",
+      "category": "activation",
+      "depth": 6,
+      "position": "middle",
+      "exec_index": 6,
+      "inputs": [
+        "conv3_out"
+      ],
+      "outputs": [
+        "relu3_out"
+      ],
+      "attributes": {},
+      "param_count": 0,
+      "motif_ids": [],
+      "gadget_ids": []
+    },
+    {
+      "id": "gap",
+      "op_type": "GlobalAveragePool",
+      "category": "pooling",
+      "depth": 7,
+      "position": "late",
+      "exec_index": 7,
+      "inputs": [
+        "relu3_out"
+      ],
+      "outputs": [
+        "gap_out"
+      ],
+      "attributes": {},
+      "param_count": 0,
+      "motif_ids": [
+        "CHAIN-PATCH-ATTACK-SURFACE"
+      ],
+      "gadget_ids": [
+        "GAD-gap-fc-gap",
+        "GAD-no-attention-gap"
+      ]
+    },
+    {
+      "id": "flatten",
+      "op_type": "Flatten",
+      "category": "view",
+      "depth": 8,
+      "position": "late",
+      "exec_index": 8,
+      "inputs": [
+        "gap_out"
+      ],
+      "outputs": [
+        "output"
+      ],
+      "attributes": {},
+      "param_count": 0,
+      "motif_ids": [],
+      "gadget_ids": []
+    }
+  ],
+  "edges": [
+    {
+      "source": "conv1",
+      "target": "relu1",
+      "tensor": "conv1_out",
+      "shape": []
+    },
+    {
+      "source": "conv2",
+      "target": "relu2",
+      "tensor": "conv2_out",
+      "shape": []
+    },
+    {
+      "source": "conv3",
+      "target": "relu3",
+      "tensor": "conv3_out",
+      "shape": []
+    },
+    {
+      "source": "gap",
+      "target": "flatten",
+      "tensor": "gap_out",
+      "shape": []
+    },
+    {
+      "source": "input",
+      "target": "conv1",
+      "tensor": "input",
+      "shape": [
+        1,
+        3,
+        224,
+        224
+      ]
+    },
+    {
+      "source": "maxpool",
+      "target": "conv3",
+      "tensor": "maxpool_out",
+      "shape": []
+    },
+    {
+      "source": "relu1",
+      "target": "conv2",
+      "tensor": "relu1_out",
+      "shape": []
+    },
+    {
+      "source": "relu2",
+      "target": "maxpool",
+      "tensor": "relu2_out",
+      "shape": []
+    },
+    {
+      "source": "relu3",
+      "target": "gap",
+      "tensor": "relu3_out",
+      "shape": []
+    }
+  ],
+  "motifs": [],
+  "chains": [
+    {
+      "id": "CHAIN-PATCH-ATTACK-SURFACE",
+      "node_ids": [
+        "gap"
+      ],
+      "gadget_ids": [
+        "CHAIN-PATCH-ATTACK-SURFACE"
+      ]
+    },
+    {
+      "id": "CHAIN-SINGLE-MODALITY-VISION",
+      "node_ids": [
+        "conv1"
+      ],
+      "gadget_ids": [
+        "CHAIN-SINGLE-MODALITY-VISION"
+      ]
+    }
+  ]
+}
