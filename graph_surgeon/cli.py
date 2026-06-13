@@ -102,6 +102,13 @@ Examples:
   graph-surgeon diff original.onnx counterfactual.onnx
 """
 
+_EXPORT_SCENE_EPILOG = """
+Examples:
+  graph-surgeon export-scene model.onnx -o scene.json
+  graph-surgeon export-scene model.onnx --no-motifs -o scene.json
+  graph-surgeon export-scene model.onnx --weights -o scene.json
+"""
+
 
 def _subparser(sub, name, *, help_text, description, epilog=""):
     return sub.add_parser(
@@ -128,7 +135,7 @@ def main(argv=None):
         dest="command",
         required=True,
         title="subcommands",
-        metavar="{inspect,topology,motifs,patterns,flow,catalog,operators,edit,diff}",
+        metavar="{inspect,topology,motifs,patterns,flow,catalog,operators,edit,diff,export-scene}",
     )
 
     # inspect
@@ -361,6 +368,37 @@ def main(argv=None):
     )
     p_rm.set_defaults(func=cmd_edit_remove_node)
 
+    # export-scene
+    p_scene = _subparser(
+        sub,
+        "export-scene",
+        help_text="Export SceneGraph JSON for 3D visualization",
+        description="Build a SceneGraph JSON file from an ONNX model for the 3D viewer.",
+        epilog=_EXPORT_SCENE_EPILOG,
+    )
+    p_scene.add_argument(
+        "model",
+        metavar="MODEL.onnx",
+        help="Path to the ONNX model file (required)",
+    )
+    p_scene.add_argument(
+        "-o",
+        "--output",
+        metavar="PATH",
+        help="Write SceneGraph JSON to this file (default: stdout)",
+    )
+    p_scene.add_argument(
+        "--no-motifs",
+        action="store_true",
+        help="Skip motif/gadget analysis (faster, topology-only scene)",
+    )
+    p_scene.add_argument(
+        "--weights",
+        action="store_true",
+        help="Include parameter counts from weight tensors (drives node sizing)",
+    )
+    p_scene.set_defaults(func=cmd_export_scene)
+
     # diff
     p_diff = _subparser(
         sub,
@@ -550,6 +588,30 @@ def cmd_edit_remove_node(args):
         return 1
     surgeon.save_model(model, args.output)
     print(f"Saved: {args.output} ({result.message})")
+    return 0
+
+
+def cmd_export_scene(args):
+    from graph_surgeon.scene.builder import build_scene
+
+    if not os.path.exists(args.model):
+        print(f"Error: file not found: {args.model}", file=sys.stderr)
+        return 1
+
+    scene = build_scene(
+        args.model,
+        include_motifs=not args.no_motifs,
+        include_weights=args.weights,
+    )
+    blob = json.dumps(scene.to_dict(), indent=2)
+
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(blob)
+            f.write("\n")
+        print(f"Scene written to: {args.output}", file=sys.stderr)
+    else:
+        print(blob)
     return 0
 
 
