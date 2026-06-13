@@ -7,6 +7,7 @@ import type { SceneGraph, SceneNode } from './types';
 import { buildThreeScene, type BuiltScene } from './scene-builder';
 import { getAllCategories } from './colors';
 import { highlightMotif, clearHighlight, buildMotifList } from './motifs';
+import { toggleAllRegions } from './motif-regions';
 import { initFlow, startFlow, stopFlow, isFlowPlaying, updateFlow } from './flow';
 import { initCatalogDrawer, showCatalogEntry, closeCatalog } from './catalog-drawer';
 import { initEditMode, showContextMenu, hideContextMenu } from './edit-mode';
@@ -88,7 +89,9 @@ function init() {
   renderer.domElement.addEventListener('click', onClick);
   document.getElementById('close-detail')!.addEventListener('click', closeDetail);
 
-  initCatalogDrawer();
+  initCatalogDrawer((nodeId) => {
+    if (builtScene) pulseNode(nodeId, builtScene, camera, controls);
+  });
   setupDragDrop();
   setupEditMode();
   initSearch((nodeId) => {
@@ -330,7 +333,7 @@ function loadScene(data: SceneGraph) {
   const hud = document.getElementById('hud-info')!;
   hud.innerHTML = `
     ${data.model.name} | ${data.model.total_nodes} nodes | depth ${data.model.max_depth} | opset ${data.model.opset}
-    <div style="font-size:10px;color:#0aa;margin-top:2px">WASD fly | Q/E up/down | mouse orbit | scroll zoom | click node</div>
+    <div style="font-size:10px;color:#0aa;margin-top:2px">WASD fly | Q/E up/down | mouse orbit | scroll zoom<br>click node: details | motifs: click to highlight</div>
   `;
 
   initFlow(data, (index, nodeId) => {
@@ -427,6 +430,50 @@ function buildControlPanel(data: SceneGraph) {
       showFlowOverlay(data.model.flow_description!);
     });
     panel.appendChild(flowDescBtn);
+  }
+
+  // Navigation buttons
+  const navRow = document.createElement('div');
+  navRow.style.cssText = 'display:flex;gap:4px;margin-bottom:12px;';
+
+  const startBtn = document.createElement('button');
+  startBtn.textContent = 'GO TO START';
+  startBtn.style.cssText = `
+    flex:1;background:transparent;border:1px solid #0ff;color:#0ff;
+    font-family:'Courier New',monospace;font-size:10px;padding:4px;
+    cursor:pointer;text-shadow:0 0 4px #0ff;
+  `;
+  startBtn.addEventListener('click', () => flyToGraphEnd('start'));
+  navRow.appendChild(startBtn);
+
+  const endBtn = document.createElement('button');
+  endBtn.textContent = 'GO TO END';
+  endBtn.style.cssText = `
+    flex:1;background:transparent;border:1px solid #ff6600;color:#ff6600;
+    font-family:'Courier New',monospace;font-size:10px;padding:4px;
+    cursor:pointer;text-shadow:0 0 4px #f60;
+  `;
+  endBtn.addEventListener('click', () => flyToGraphEnd('end'));
+  navRow.appendChild(endBtn);
+
+  panel.appendChild(navRow);
+
+  // Show all regions toggle
+  if (data.motifs.length > 0 || data.chains.length > 0) {
+    const regionBtn = document.createElement('button');
+    regionBtn.textContent = 'SHOW ALL REGIONS';
+    regionBtn.style.cssText = `
+      background:transparent;border:1px solid #ff00ff;color:#ff00ff;
+      font-family:'Courier New',monospace;font-size:10px;padding:4px 8px;
+      cursor:pointer;width:100%;margin-bottom:6px;
+      text-shadow:0 0 4px #f0f;box-shadow:0 0 6px rgba(255,0,255,0.15);
+    `;
+    regionBtn.addEventListener('click', () => {
+      if (!builtScene) return;
+      const showing = toggleAllRegions(builtScene.motifRegions);
+      regionBtn.textContent = showing ? 'HIDE ALL REGIONS' : 'SHOW ALL REGIONS';
+    });
+    panel.appendChild(regionBtn);
   }
 
   // Motifs section — collapsible header
@@ -566,6 +613,25 @@ function frameAll() {
   const startTarget = new THREE.Vector3(graphTop.x, graphTop.y, graphTop.z);
   camera.position.set(startTarget.x, startTarget.y + 10, startTarget.z + 40);
   controls.target.copy(startTarget);
+  controls.update();
+}
+
+function flyToGraphEnd(which: 'start' | 'end') {
+  if (!builtScene) return;
+
+  const box = new THREE.Box3().setFromObject(builtScene.group);
+  const target = new THREE.Vector3();
+
+  if (which === 'start') {
+    box.getCenter(target);
+    target.y = box.max.y;
+  } else {
+    box.getCenter(target);
+    target.y = box.min.y;
+  }
+
+  camera.position.set(target.x, target.y + 10, target.z + 30);
+  controls.target.copy(target);
   controls.update();
 }
 

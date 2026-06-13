@@ -3,6 +3,7 @@ import type { SceneGraph, SceneNode } from './types';
 import { computeLayout, type NodePosition } from './layout';
 import { getCategoryColor } from './colors';
 import { getGeometryForOp } from './shapes';
+import { buildMotifRegions, type MotifRegions } from './motif-regions';
 
 export interface BuiltScene {
   group: THREE.Group;
@@ -10,6 +11,7 @@ export interface BuiltScene {
   edgeLines: THREE.Group;
   positions: Map<string, NodePosition>;
   labelSprites: THREE.Sprite[];
+  motifRegions: MotifRegions;
 }
 
 export function buildThreeScene(data: SceneGraph): BuiltScene {
@@ -57,7 +59,10 @@ export function buildThreeScene(data: SceneGraph): BuiltScene {
   const edgeLines = buildEdges(data, positions);
   group.add(edgeLines);
 
-  return { group, nodeObjects, edgeLines, positions, labelSprites };
+  const motifRegions = buildMotifRegions(data, positions);
+  group.add(motifRegions.allGroup);
+
+  return { group, nodeObjects, edgeLines, positions, labelSprites, motifRegions };
 }
 
 function buildEdges(data: SceneGraph, positions: Map<string, NodePosition>): THREE.Group {

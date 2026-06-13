@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { SceneGraph, SceneMotif, SceneChain } from './types';
 import type { BuiltScene } from './scene-builder';
+import { showRegion, hideAllRegions } from './motif-regions';
 
 let activeHighlight: string | null = null;
 let originalEmissive = new Map<string, number>();
@@ -32,6 +33,8 @@ export function highlightMotif(
       mat.opacity = 0.2;
     }
   }
+
+  showRegion(built.motifRegions, motifId);
 }
 
 export function clearHighlight(built: BuiltScene) {
@@ -43,6 +46,7 @@ export function clearHighlight(built: BuiltScene) {
     mat.opacity = 0.9;
   }
 
+  hideAllRegions(built.motifRegions);
   activeHighlight = null;
   originalEmissive.clear();
 }
@@ -51,33 +55,81 @@ export function getActiveHighlight(): string | null {
   return activeHighlight;
 }
 
+export interface MotifGroup {
+  ids: string[];
+  title: string;
+  type: 'motif' | 'chain';
+  count: number;
+  significance: string;
+}
+
+export function buildMotifGroups(scene: SceneGraph): MotifGroup[] {
+  const titleMap = new Map<string, MotifGroup>();
+
+  for (const m of scene.motifs) {
+    const existing = titleMap.get(m.title);
+    if (existing) {
+      existing.ids.push(m.id);
+      existing.count++;
+    } else {
+      titleMap.set(m.title, {
+        ids: [m.id],
+        title: m.title,
+        type: 'motif',
+        count: 1,
+        significance: m.structural_significance || '',
+      });
+    }
+  }
+
+  for (const c of scene.chains) {
+    const title = c.title || c.id;
+    titleMap.set(title, {
+      ids: [c.id],
+      title,
+      type: 'chain',
+      count: 1,
+      significance: c.structural_significance || '',
+    });
+  }
+
+  return [...titleMap.values()];
+}
+
+const SIG_COLORS: Record<string, string> = {
+  EXCEPTIONAL: '#ff0033',
+  PRIMARY: '#ff00ff',
+  SECONDARY: '#00ffff',
+  TERTIARY: '#00ff41',
+  MITIGATING: '#66ffcc',
+};
+
 export function buildMotifList(scene: SceneGraph): HTMLElement {
   const container = document.createElement('div');
   container.id = 'motif-list';
 
-  const items = [
-    ...scene.motifs.map(m => ({ id: m.id, title: m.title, type: 'motif' as const, desc: m.description })),
-    ...scene.chains.map(c => ({ id: c.id, title: c.id, type: 'chain' as const, desc: '' })),
-  ];
+  const groups = buildMotifGroups(scene);
 
-  if (items.length === 0) {
+  if (groups.length === 0) {
     container.innerHTML = '<div style="color:#ccc;padding:4px">No motifs detected</div>';
     return container;
   }
 
-  for (const item of items) {
+  for (const group of groups) {
     const row = document.createElement('div');
     row.className = 'motif-entry';
-    row.dataset.motifId = item.id;
+    row.dataset.motifId = group.ids[0];
+    row.dataset.allIds = JSON.stringify(group.ids);
 
-    const badge = item.type === 'chain' ? '⛓' : '◆';
-    const badgeColor = item.type === 'chain' ? '#ff6600' : '#0ff';
+    const badge = group.type === 'chain' ? '⛓' : '◆';
+    const badgeColor = group.type === 'chain' ? '#ff6600' : (SIG_COLORS[group.significance] || '#0ff');
+    const countLabel = group.count > 1 ? ` <span style="color:#0aa;font-size:10px">(${group.count})</span>` : '';
 
     row.innerHTML = `
       <span style="color:${badgeColor}">${badge}</span>
-      <span class="motif-title">${item.title}</span>
+      <span class="motif-title">${group.title}${countLabel}</span>
     `;
-    row.title = item.desc || item.id;
+    row.title = group.ids.join(', ');
     container.appendChild(row);
   }
 

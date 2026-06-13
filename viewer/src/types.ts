@@ -21,6 +21,11 @@ export interface SceneModelInfo {
   flow_description: string;
 }
 
+export interface PaperRef {
+  slug: string;
+  title: string;
+}
+
 export interface SceneNode {
   id: string;
   op_type: string;
@@ -49,12 +54,22 @@ export interface SceneMotif {
   node_ids: string[];
   description: string;
   catalog_ref: string;
+  attacks_enabled?: string[];
+  structural_significance?: string;
+  confidence?: string;
+  category?: string;
+  research_basis?: PaperRef[];
+  detection_logic?: string;
 }
 
 export interface SceneChain {
   id: string;
   node_ids: string[];
   gadget_ids: string[];
+  title?: string;
+  description?: string;
+  structural_significance?: string;
+  research_basis?: PaperRef[];
 }
 
 export interface SceneGraph {
