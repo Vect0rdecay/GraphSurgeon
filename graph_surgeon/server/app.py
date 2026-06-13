@@ -130,11 +130,20 @@ def create_app(model_path: str) -> FastAPI:
         return JSONResponse({"status": "reset"})
 
     if VIEWER_DIST.exists():
+        assets_dir = VIEWER_DIST / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
         @app.get("/")
         def serve_index():
             return FileResponse(VIEWER_DIST / "index.html")
 
-        app.mount("/", StaticFiles(directory=str(VIEWER_DIST)), name="static")
+        @app.get("/{path:path}")
+        def spa_fallback(path: str):
+            file_path = VIEWER_DIST / path
+            if file_path.exists() and file_path.is_file():
+                return FileResponse(file_path)
+            return FileResponse(VIEWER_DIST / "index.html")
 
     return app
 

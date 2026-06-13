@@ -122,8 +122,9 @@ function makeLabel(node: SceneNode, color: number): THREE.Sprite {
   ctx.fillText(node.op_type, 128, 24);
 
   ctx.font = '14px Courier New';
-  ctx.fillStyle = '#aaaaaa';
-  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = hex;
+  ctx.shadowBlur = 4;
   ctx.fillText(node.id, 128, 48);
 
   const texture = new THREE.CanvasTexture(canvas);

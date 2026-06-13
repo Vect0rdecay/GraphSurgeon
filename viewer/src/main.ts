@@ -49,8 +49,10 @@ function init() {
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
-  controls.minDistance = 3;
+  controls.dampingFactor = 0.12;
+  controls.rotateSpeed = 0.5;
+  controls.panSpeed = 0.7;
+  controls.minDistance = 5;
   controls.maxDistance = 200;
 
   const ambient = new THREE.AmbientLight(0x222244, 0.5);
@@ -264,9 +266,21 @@ async function loadDefaultScene() {
     if (resp.ok) {
       const data = await resp.json() as SceneGraph;
       loadScene(data);
+      return;
     }
   } catch {
-    // No default scene — user must drag-drop
+    // static file not available
+  }
+
+  try {
+    const resp = await fetch('/api/scene');
+    if (resp.ok) {
+      const data = await resp.json() as SceneGraph;
+      loadScene(data);
+      return;
+    }
+  } catch {
+    // no API server either — user must drag-drop
   }
 }
 
@@ -476,9 +490,9 @@ function frameAll() {
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   const fov = camera.fov * (Math.PI / 180);
-  const dist = maxDim / (2 * Math.tan(fov / 2)) * 1.5;
+  const dist = Math.max(maxDim / (2 * Math.tan(fov / 2)) * 1.5, 15);
 
-  camera.position.set(center.x, center.y, center.z + dist);
+  camera.position.set(center.x, center.y + dist * 0.3, center.z + dist);
   controls.target.copy(center);
   controls.update();
 }

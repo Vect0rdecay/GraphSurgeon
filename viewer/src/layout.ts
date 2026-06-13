@@ -8,11 +8,8 @@ export interface NodePosition {
 
 const Y_SPACING = 3.0;
 const X_SPACING = 3.5;
-const Z_BAND: Record<string, number> = {
-  early:  0,
-  middle: 8,
-  late:   16,
-};
+const HELIX_RADIUS = 5.0;
+const HELIX_ANGLE_STEP = 0.8; // ~46° per step, full turn every ~8 nodes
 
 export function computeLayout(scene: SceneGraph): Map<string, NodePosition> {
   const positions = new Map<string, NodePosition>();
@@ -24,6 +21,9 @@ export function computeLayout(scene: SceneGraph): Map<string, NodePosition> {
     byDepth.set(node.depth, list);
   }
 
+  const maxNodesPerDepth = Math.max(...[...byDepth.values()].map(v => v.length), 1);
+  const useHelix = maxNodesPerDepth <= 2;
+
   const parentX = new Map<string, number>();
 
   const outputToNode = new Map<string, string>();
@@ -34,6 +34,8 @@ export function computeLayout(scene: SceneGraph): Map<string, NodePosition> {
   }
 
   const depths = [...byDepth.keys()].sort((a, b) => a - b);
+  let helixIndex = 0;
+
   for (const depth of depths) {
     const nodes = byDepth.get(depth)!;
     nodes.sort((a, b) => {
@@ -42,14 +44,24 @@ export function computeLayout(scene: SceneGraph): Map<string, NodePosition> {
       return aMedian - bMedian;
     });
 
-    const count = nodes.length;
-    const offset = -(count - 1) * X_SPACING / 2;
-
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
-      const x = offset + i * X_SPACING;
+      let x: number;
+      let z: number;
+
+      if (useHelix) {
+        const angle = helixIndex * HELIX_ANGLE_STEP;
+        x = HELIX_RADIUS * Math.cos(angle);
+        z = HELIX_RADIUS * Math.sin(angle);
+        helixIndex++;
+      } else {
+        const count = nodes.length;
+        const offset = -(count - 1) * X_SPACING / 2;
+        x = offset + i * X_SPACING;
+        z = 0;
+      }
+
       const y = -depth * Y_SPACING;
-      const z = Z_BAND[node.position] ?? Z_BAND.middle;
 
       positions.set(node.id, { x, y, z });
       parentX.set(node.id, x);
