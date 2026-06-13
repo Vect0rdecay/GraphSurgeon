@@ -53,8 +53,8 @@ function showMotifDetail(m: SceneMotif) {
       <span id="close-catalog" style="color:#f0f;cursor:pointer;font-size:16px">&times;</span>
     </div>
     <h4 style="color:#fff;margin:4px 0 8px">${m.title}</h4>
-    <div style="color:#aaa;margin-bottom:8px">${m.description || 'No description available.'}</div>
-    <div style="color:#666;font-size:11px">
+    <div style="color:#ddd;margin-bottom:8px">${m.description || 'No description available.'}</div>
+    <div style="color:#ccc;font-size:11px">
       <div>catalog_ref: ${m.catalog_ref}</div>
       <div>nodes: ${m.node_ids.join(', ') || 'none'}</div>
     </div>
@@ -71,10 +71,10 @@ function showChainDetail(c: SceneChain, scene: SceneGraph) {
       <span id="close-catalog" style="color:#f60;cursor:pointer;font-size:16px">&times;</span>
     </div>
     <h4 style="color:#fff;margin:4px 0 8px">${c.id}</h4>
-    <div style="color:#aaa;margin-bottom:8px">
+    <div style="color:#ddd;margin-bottom:8px">
       Compound chain involving ${c.node_ids.length} node(s) and ${c.gadget_ids.length} gadget(s).
     </div>
-    <div style="color:#666;font-size:11px">
+    <div style="color:#ccc;font-size:11px">
       <div>gadgets: ${gadgetNames || 'none'}</div>
       <div>nodes: ${c.node_ids.join(', ') || 'none'}</div>
     </div>

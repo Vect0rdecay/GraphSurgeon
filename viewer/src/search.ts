@@ -56,7 +56,7 @@ export function initSearch(
   style.textContent = `
     .search-result {
       padding: 4px 10px;
-      color: #aaa;
+      color: #ddd;
       cursor: pointer;
       font-size: 12px;
     }

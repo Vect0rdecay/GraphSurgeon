@@ -71,7 +71,7 @@ async function removeNode(nodeId: string) {
       if (d.nodes_added?.length) {
         html += `<div style="color:#6f6;margin-top:2px">Added: ${d.nodes_added.join(', ')}</div>`;
       }
-      html += `<div style="margin-top:4px;color:#888">Nodes: ${d.total_nodes_a} &rarr; ${d.total_nodes_b}</div>`;
+      html += `<div style="margin-top:4px;color:#ccc">Nodes: ${d.total_nodes_a} &rarr; ${d.total_nodes_b}</div>`;
     }
 
     if (result.validation) {

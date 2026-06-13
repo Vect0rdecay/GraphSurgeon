@@ -53,7 +53,7 @@ function init() {
   controls.rotateSpeed = 0.5;
   controls.panSpeed = 0.7;
   controls.minDistance = 5;
-  controls.maxDistance = 200;
+  controls.maxDistance = 2000;
 
   const ambient = new THREE.AmbientLight(0x222244, 0.5);
   threeScene.add(ambient);
@@ -369,14 +369,14 @@ function buildControlPanel(data: SceneGraph) {
 
   const flowStatus = document.createElement('div');
   flowStatus.id = 'flow-status';
-  flowStatus.style.cssText = 'color:#666;margin-bottom:12px;min-height:16px;';
+  flowStatus.style.cssText = 'color:#0ff;margin-bottom:12px;min-height:16px;';
   panel.appendChild(flowStatus);
 
   // Flow description
   if (data.model.flow_description) {
     const flowDesc = document.createElement('div');
     flowDesc.style.cssText = `
-      color: #555;
+      color: #0ff;
       font-size: 11px;
       margin-bottom: 12px;
       max-height: 80px;
@@ -399,8 +399,8 @@ function buildControlPanel(data: SceneGraph) {
     clearBtn.textContent = 'CLEAR HIGHLIGHT';
     clearBtn.style.cssText = `
       background: transparent;
-      border: 1px solid #333;
-      color: #666;
+      border: 1px solid #555;
+      color: #ccc;
       font-family: 'Courier New', monospace;
       font-size: 11px;
       padding: 3px 8px;
@@ -435,7 +435,7 @@ function buildControlPanel(data: SceneGraph) {
         background: rgba(255, 0, 255, 0.05);
       }
       .motif-title {
-        color: #aaa;
+        color: #ddd;
         margin-left: 4px;
       }
       .motif-entry:hover .motif-title {
@@ -490,9 +490,12 @@ function frameAll() {
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   const fov = camera.fov * (Math.PI / 180);
-  const dist = Math.max(maxDim / (2 * Math.tan(fov / 2)) * 1.5, 15);
+  const fitDist = maxDim / (2 * Math.tan(fov / 2));
+  const dist = Math.max(fitDist * 2.5, 40);
 
-  camera.position.set(center.x, center.y + dist * 0.3, center.z + dist);
+  camera.position.set(center.x, center.y + dist * 0.4, center.z + dist);
+  camera.far = Math.max(dist * 4, 2000);
+  camera.updateProjectionMatrix();
   controls.target.copy(center);
   controls.update();
 }

@@ -61,7 +61,7 @@ export function buildMotifList(scene: SceneGraph): HTMLElement {
   ];
 
   if (items.length === 0) {
-    container.innerHTML = '<div style="color:#666;padding:4px">No motifs detected</div>';
+    container.innerHTML = '<div style="color:#ccc;padding:4px">No motifs detected</div>';
     return container;
   }
 
