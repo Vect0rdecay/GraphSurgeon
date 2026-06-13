@@ -642,6 +642,7 @@ def cmd_export_scene(args):
     blob = json.dumps(scene.to_dict(), indent=2)
 
     if args.output:
+        os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(blob)
             f.write("\n")

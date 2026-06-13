@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from graph_surgeon.scene.schema import (
@@ -30,14 +31,32 @@ def build_scene(
     """
     from graph_surgeon.analysis.motifs import OPERATOR_REFERENCE_DB
     from graph_surgeon.graph.surgeon import GraphSurgeon
-    from graph_surgeon.graph.topology import LayerPosition
     from graph_surgeon.parsers.onnx_parser import ONNXGraphParser
 
     parser = ONNXGraphParser()
     graph = parser.parse_file(model_path)
     surgeon = GraphSurgeon(verbose=False)
     raw_model = graph._raw_model
+
     topo = surgeon.get_graph_topology(raw_model.graph)
+    topo_usable = topo.max_depth > 0 or len(topo.nodes) == len(graph.nodes)
+
+    if topo_usable:
+        node_depths, max_depth, exec_order = _extract_engine_topo(topo, graph)
+    else:
+        node_depths, max_depth, exec_order = _compute_topology(graph)
+
+    early_thresh = max_depth * 0.20
+    late_thresh = max_depth * 0.80
+
+    def _position(depth: int) -> str:
+        if max_depth == 0:
+            return "middle"
+        if depth <= early_thresh:
+            return "early"
+        if depth >= late_thresh:
+            return "late"
+        return "middle"
 
     opset = 0
     for imp in raw_model.opset_import:
@@ -52,24 +71,20 @@ def build_scene(
     report = None
     if include_motifs:
         from graph_surgeon.parsers.onnx_parser import analyze_onnx_graph
-        from graph_surgeon.reporting.sanitize import serialize_for_export
 
         report = analyze_onnx_graph(model_path, verbose=False)
 
     motif_map, gadget_map = _build_membership_maps(report)
 
-    exec_order_index = {
-        name: i for i, name in enumerate(topo.execution_order)
-    }
+    exec_order_index = {name: i for i, name in enumerate(exec_order)}
 
     initializer_names: Set[str] = set(graph.initializers.keys())
     graph_input_names: Set[str] = {inp.name for inp in graph.inputs}
 
     nodes: List[SceneNode] = []
     for node in graph.nodes:
-        node_topo = topo.nodes.get(node.name)
-        depth = node_topo.depth if node_topo else 0
-        position = node_topo.position.value if node_topo else "middle"
+        depth = node_depths.get(node.name, 0)
+        position = _position(depth)
 
         op_ref = OPERATOR_REFERENCE_DB.get(node.op_type, {})
         category = op_ref.get("category", "unknown")
@@ -95,7 +110,7 @@ def build_scene(
 
     nodes.sort(key=lambda n: n.exec_index)
 
-    edges = _build_edges(graph, topo, initializer_names, graph_input_names)
+    edges = _build_edges(graph, initializer_names, graph_input_names)
 
     motifs: List[SceneMotif] = []
     chains: List[SceneChain] = []
@@ -107,7 +122,7 @@ def build_scene(
         format="onnx",
         opset=opset,
         total_nodes=len(graph.nodes),
-        max_depth=topo.max_depth,
+        max_depth=max_depth,
         inputs=[
             SceneInput(
                 name=inp.name,
@@ -137,6 +152,72 @@ def build_scene(
     )
 
 
+def _extract_engine_topo(topo, graph):
+    """Extract depth info from a working engine topology."""
+    node_depths: Dict[str, int] = {}
+    for node in graph.nodes:
+        nt = topo.nodes.get(node.name)
+        node_depths[node.name] = nt.depth if nt else 0
+    return node_depths, topo.max_depth, list(topo.execution_order)
+
+
+def _compute_topology(graph):
+    """Compute depth and execution order directly from the parsed ONNXGraph.
+
+    This handles models with unnamed protobuf nodes where the engine's
+    topology analysis collapses to a single entry.
+    """
+    output_to_node: Dict[str, str] = {}
+    for node in graph.nodes:
+        for out in node.outputs:
+            output_to_node[out] = node.name
+
+    input_names = {inp.name for inp in graph.inputs}
+    init_names = set(graph.initializers.keys())
+    source_names = input_names | init_names
+
+    node_depths: Dict[str, int] = {}
+
+    def get_depth(node_name: str, visited: Set[str]) -> int:
+        if node_name in node_depths:
+            return node_depths[node_name]
+        if node_name in visited:
+            return 0
+        visited.add(node_name)
+
+        node = None
+        for n in graph.nodes:
+            if n.name == node_name:
+                node = n
+                break
+        if not node:
+            return 0
+
+        max_parent = -1
+        for inp in node.inputs:
+            if inp in source_names:
+                max_parent = max(max_parent, -1)
+            elif inp in output_to_node:
+                parent = output_to_node[inp]
+                max_parent = max(max_parent, get_depth(parent, visited))
+
+        depth = max_parent + 1
+        node_depths[node_name] = depth
+        return depth
+
+    for node in graph.nodes:
+        get_depth(node.name, set())
+
+    max_depth = max(node_depths.values()) if node_depths else 0
+
+    exec_order = sorted(
+        [n.name for n in graph.nodes],
+        key=lambda name: (node_depths.get(name, 0), name),
+    )
+
+    return node_depths, max_depth, exec_order
+
+
 def _compute_param_counts(graph) -> Dict[str, int]:
     """Map node names to parameter counts from initializer tensors."""
     tensor_to_node: Dict[str, str] = {}
@@ -159,7 +240,7 @@ def _compute_param_counts(graph) -> Dict[str, int]:
 
 
 def _build_membership_maps(report) -> Tuple[Dict[str, List[str]], Dict[str, List[str]]]:
-    """Build node→motif_ids and node→gadget_ids maps from a ModelSecurityReport."""
+    """Build node->motif_ids and node->gadget_ids maps from a ModelSecurityReport."""
     motif_map: Dict[str, List[str]] = {}
     gadget_map: Dict[str, List[str]] = {}
     if not report:
@@ -179,7 +260,7 @@ def _build_membership_maps(report) -> Tuple[Dict[str, List[str]], Dict[str, List
     return motif_map, gadget_map
 
 
-def _build_edges(graph, topo, initializer_names, graph_input_names) -> List[SceneEdge]:
+def _build_edges(graph, initializer_names, graph_input_names) -> List[SceneEdge]:
     """Derive edges by matching tensor names between node outputs and inputs."""
     output_to_node: Dict[str, str] = {}
     for node in graph.nodes:
