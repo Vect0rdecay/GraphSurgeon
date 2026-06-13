@@ -6,17 +6,22 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import type { SceneGraph, SceneNode } from './types';
 import { buildThreeScene, type BuiltScene } from './scene-builder';
 import { getAllCategories } from './colors';
+import { highlightMotif, clearHighlight, buildMotifList } from './motifs';
+import { initFlow, startFlow, stopFlow, isFlowPlaying, updateFlow } from './flow';
+import { initCatalogDrawer, showCatalogEntry, closeCatalog } from './catalog-drawer';
 
 let renderer: THREE.WebGLRenderer;
-let scene: THREE.Scene;
+let threeScene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let controls: OrbitControls;
 let composer: EffectComposer;
 let builtScene: BuiltScene | null = null;
+let sceneData: SceneGraph | null = null;
 let raycaster: THREE.Raycaster;
 let mouse: THREE.Vector2;
 let hoveredMesh: THREE.Mesh | null = null;
 let selectedMesh: THREE.Mesh | null = null;
+let clock: THREE.Clock;
 
 init();
 loadDefaultScene();
@@ -31,9 +36,9 @@ function init() {
   renderer.toneMappingExposure = 1.5;
   container.appendChild(renderer.domElement);
 
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x000000);
-  scene.fog = new THREE.FogExp2(0x000000, 0.008);
+  threeScene = new THREE.Scene();
+  threeScene.background = new THREE.Color(0x000000);
+  threeScene.fog = new THREE.FogExp2(0x000000, 0.008);
 
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
   camera.position.set(0, 5, 30);
@@ -45,35 +50,37 @@ function init() {
   controls.maxDistance = 200;
 
   const ambient = new THREE.AmbientLight(0x222244, 0.5);
-  scene.add(ambient);
+  threeScene.add(ambient);
 
   const point1 = new THREE.PointLight(0x00ffff, 1.5, 100);
   point1.position.set(10, 10, 10);
-  scene.add(point1);
+  threeScene.add(point1);
 
   const point2 = new THREE.PointLight(0xff00ff, 1.0, 100);
   point2.position.set(-10, -10, -10);
-  scene.add(point2);
+  threeScene.add(point2);
 
   composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(new RenderPass(threeScene, camera));
 
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.8,   // strength
-    0.4,   // radius
-    0.85,  // threshold
+    0.8,
+    0.4,
+    0.85,
   );
   composer.addPass(bloomPass);
 
   raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2();
+  clock = new THREE.Clock();
 
   window.addEventListener('resize', onResize);
   renderer.domElement.addEventListener('mousemove', onMouseMove);
   renderer.domElement.addEventListener('click', onClick);
   document.getElementById('close-detail')!.addEventListener('click', closeDetail);
 
+  initCatalogDrawer();
   setupDragDrop();
   buildLegend();
   animate();
@@ -81,7 +88,13 @@ function init() {
 
 function animate() {
   requestAnimationFrame(animate);
+  const delta = clock.getDelta();
   controls.update();
+
+  if (builtScene && sceneData && isFlowPlaying()) {
+    updateFlow(delta, builtScene, camera, controls);
+  }
+
   composer.render();
 }
 
@@ -96,7 +109,7 @@ function onMouseMove(event: MouseEvent) {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-  if (!builtScene) return;
+  if (!builtScene || isFlowPlaying()) return;
 
   raycaster.setFromCamera(mouse, camera);
   const meshes = [...builtScene.nodeObjects.values()];
@@ -122,7 +135,7 @@ function onMouseMove(event: MouseEvent) {
 }
 
 function onClick(_event: MouseEvent) {
-  if (!builtScene) return;
+  if (!builtScene || isFlowPlaying()) return;
 
   raycaster.setFromCamera(mouse, camera);
   const meshes = [...builtScene.nodeObjects.values()];
@@ -243,18 +256,172 @@ async function loadDefaultScene() {
 
 function loadScene(data: SceneGraph) {
   if (builtScene) {
-    scene.remove(builtScene.group);
+    threeScene.remove(builtScene.group);
   }
 
+  sceneData = data;
   builtScene = buildThreeScene(data);
-  scene.add(builtScene.group);
+  threeScene.add(builtScene.group);
 
   const hud = document.getElementById('hud-info')!;
   hud.innerHTML = `
     ${data.model.name} | ${data.model.total_nodes} nodes | depth ${data.model.max_depth} | opset ${data.model.opset}
   `;
 
+  initFlow(data, (index, nodeId) => {
+    const node = data.nodes.find(n => n.id === nodeId);
+    if (node) {
+      const flowStatus = document.getElementById('flow-status');
+      if (flowStatus) {
+        flowStatus.textContent = `[${index + 1}/${data.nodes.length}] ${node.op_type}: ${node.id}`;
+      }
+    }
+  });
+
+  buildControlPanel(data);
   frameAll();
+}
+
+function buildControlPanel(data: SceneGraph) {
+  let panel = document.getElementById('control-panel');
+  if (panel) panel.remove();
+
+  panel = document.createElement('div');
+  panel.id = 'control-panel';
+  panel.style.cssText = `
+    position: absolute;
+    top: 80px;
+    left: 16px;
+    width: 220px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    color: #0ff;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    z-index: 10;
+  `;
+
+  // Flow playback button
+  const flowBtn = document.createElement('button');
+  flowBtn.id = 'flow-btn';
+  flowBtn.textContent = 'PLAY FLOW';
+  flowBtn.style.cssText = `
+    background: transparent;
+    border: 1px solid #0ff;
+    color: #0ff;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 6px 12px;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 4px;
+    text-shadow: 0 0 6px #0ff;
+    box-shadow: 0 0 8px rgba(0,255,255,0.2);
+  `;
+  flowBtn.addEventListener('click', () => {
+    if (isFlowPlaying()) {
+      stopFlow();
+      flowBtn.textContent = 'PLAY FLOW';
+      flowBtn.style.borderColor = '#0ff';
+      flowBtn.style.color = '#0ff';
+      if (builtScene) clearHighlight(builtScene);
+    } else {
+      startFlow();
+      flowBtn.textContent = 'STOP FLOW';
+      flowBtn.style.borderColor = '#ff0066';
+      flowBtn.style.color = '#ff0066';
+      closeCatalog();
+    }
+  });
+  panel.appendChild(flowBtn);
+
+  const flowStatus = document.createElement('div');
+  flowStatus.id = 'flow-status';
+  flowStatus.style.cssText = 'color:#666;margin-bottom:12px;min-height:16px;';
+  panel.appendChild(flowStatus);
+
+  // Flow description
+  if (data.model.flow_description) {
+    const flowDesc = document.createElement('div');
+    flowDesc.style.cssText = `
+      color: #555;
+      font-size: 11px;
+      margin-bottom: 12px;
+      max-height: 80px;
+      overflow-y: auto;
+      border-left: 2px solid #333;
+      padding-left: 8px;
+    `;
+    flowDesc.textContent = data.model.flow_description;
+    panel.appendChild(flowDesc);
+  }
+
+  // Motifs section
+  if (data.motifs.length > 0 || data.chains.length > 0) {
+    const motifHeader = document.createElement('div');
+    motifHeader.style.cssText = 'color:#ff00ff;margin-bottom:4px;text-shadow:0 0 6px #f0f;font-weight:bold;';
+    motifHeader.textContent = 'MOTIFS & CHAINS';
+    panel.appendChild(motifHeader);
+
+    const clearBtn = document.createElement('button');
+    clearBtn.textContent = 'CLEAR HIGHLIGHT';
+    clearBtn.style.cssText = `
+      background: transparent;
+      border: 1px solid #333;
+      color: #666;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      padding: 3px 8px;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 6px;
+    `;
+    clearBtn.addEventListener('click', () => {
+      if (builtScene) clearHighlight(builtScene);
+      closeCatalog();
+    });
+    panel.appendChild(clearBtn);
+
+    const motifList = buildMotifList(data);
+    motifList.style.cssText = `
+      max-height: 300px;
+      overflow-y: auto;
+    `;
+    panel.appendChild(motifList);
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .motif-entry {
+        padding: 4px 6px;
+        cursor: pointer;
+        border-left: 2px solid transparent;
+        margin-bottom: 2px;
+        transition: all 0.15s;
+      }
+      .motif-entry:hover {
+        border-left-color: #ff00ff;
+        background: rgba(255, 0, 255, 0.05);
+      }
+      .motif-title {
+        color: #aaa;
+        margin-left: 4px;
+      }
+      .motif-entry:hover .motif-title {
+        color: #fff;
+      }
+    `;
+    document.head.appendChild(style);
+
+    motifList.addEventListener('click', (e) => {
+      const entry = (e.target as HTMLElement).closest('.motif-entry') as HTMLElement;
+      if (!entry || !builtScene || !sceneData) return;
+      const motifId = entry.dataset.motifId!;
+      highlightMotif(motifId, sceneData, builtScene);
+      showCatalogEntry(motifId, sceneData);
+    });
+  }
+
+  document.getElementById('app')!.appendChild(panel);
 }
 
 function frameAll() {
