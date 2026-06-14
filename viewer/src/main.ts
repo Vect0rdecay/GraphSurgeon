@@ -536,10 +536,23 @@ function buildControlPanel(data: SceneGraph) {
 
   // ShadowLogic
   if (data.shadowlogic && data.shadowlogic.injection_points.length > 0 && builtScene) {
+    const slCount = data.shadowlogic.injection_points.length;
     const slHead = document.createElement('div');
     slHead.className = 'section-head';
-    slHead.textContent = 'SHADOWLOGIC';
+    slHead.style.cursor = 'pointer';
+    slHead.style.userSelect = 'none';
+    slHead.innerHTML = `▸ SHADOWLOGIC (${slCount})`;
     panel.appendChild(slHead);
+
+    const slBody = document.createElement('div');
+    slBody.style.display = 'none';
+    let slExpanded = false;
+
+    slHead.addEventListener('click', () => {
+      slExpanded = !slExpanded;
+      slBody.style.display = slExpanded ? 'block' : 'none';
+      slHead.innerHTML = `${slExpanded ? '▾' : '▸'} SHADOWLOGIC (${slCount})`;
+    });
 
     const slPanel = buildShadowLogicPanel(data.shadowlogic, (nodeId) => {
       if (!builtScene) return;
@@ -552,7 +565,7 @@ function buildControlPanel(data: SceneGraph) {
       const node = data.nodes.find(n => n.id === nodeId);
       if (node) showDetail(node);
     });
-    panel.appendChild(slPanel);
+    slBody.appendChild(slPanel);
 
     const slToggleBtn = makeBtn('SHOW INJECTION POINTS', 'accent');
     slToggleBtn.style.marginBottom = '6px';
@@ -562,26 +575,57 @@ function buildControlPanel(data: SceneGraph) {
       g.visible = !g.visible;
       slToggleBtn.textContent = g.visible ? 'HIDE INJECTION POINTS' : 'SHOW INJECTION POINTS';
     });
-    panel.appendChild(slToggleBtn);
+    slBody.appendChild(slToggleBtn);
+    panel.appendChild(slBody);
   }
 
   // Structural Patterns
   if (data.structural_patterns && builtScene) {
+    const patTotal = data.structural_patterns.gradient_bottlenecks.length
+      + data.structural_patterns.feature_fusion_points.length
+      + data.structural_patterns.amplification_layers.length
+      + data.structural_patterns.recommended_defense_points.length;
     const patHead = document.createElement('div');
     patHead.className = 'section-head';
-    patHead.textContent = 'PATTERNS';
+    patHead.style.cursor = 'pointer';
+    patHead.style.userSelect = 'none';
+    patHead.innerHTML = `▸ PATTERNS (${patTotal})`;
     panel.appendChild(patHead);
 
+    const patBody = document.createElement('div');
+    patBody.style.display = 'none';
+    let patExpanded = false;
+
+    patHead.addEventListener('click', () => {
+      patExpanded = !patExpanded;
+      patBody.style.display = patExpanded ? 'block' : 'none';
+      patHead.innerHTML = `${patExpanded ? '▾' : '▸'} PATTERNS (${patTotal})`;
+    });
+
     const patternsEl = buildPatternsPanel(data.structural_patterns, builtScene);
-    panel.appendChild(patternsEl);
+    patBody.appendChild(patternsEl);
+    panel.appendChild(patBody);
   }
 
   // Motifs & Regions
   if (data.motifs.length > 0 || data.chains.length > 0) {
+    const count = data.motifs.length + data.chains.length;
     const motifHead = document.createElement('div');
     motifHead.className = 'section-head';
-    motifHead.textContent = `MOTIFS & CHAINS (${data.motifs.length + data.chains.length})`;
+    motifHead.style.cursor = 'pointer';
+    motifHead.style.userSelect = 'none';
+    motifHead.innerHTML = `▸ MOTIFS & CHAINS (${count})`;
     panel.appendChild(motifHead);
+
+    const motifBody = document.createElement('div');
+    motifBody.style.display = 'none';
+    let motifExpanded = false;
+
+    motifHead.addEventListener('click', () => {
+      motifExpanded = !motifExpanded;
+      motifBody.style.display = motifExpanded ? 'block' : 'none';
+      motifHead.innerHTML = `${motifExpanded ? '▾' : '▸'} MOTIFS & CHAINS (${count})`;
+    });
 
     const regionBtn = makeBtn('SHOW ALL REGIONS', 'accent');
     regionBtn.style.marginBottom = '6px';
@@ -590,7 +634,7 @@ function buildControlPanel(data: SceneGraph) {
       const showing = toggleAllRegions(builtScene.motifRegions);
       regionBtn.textContent = showing ? 'HIDE ALL REGIONS' : 'SHOW ALL REGIONS';
     });
-    panel.appendChild(regionBtn);
+    motifBody.appendChild(regionBtn);
 
     const clearBtn = makeBtn('CLEAR HIGHLIGHT');
     clearBtn.style.marginBottom = '6px';
@@ -598,10 +642,10 @@ function buildControlPanel(data: SceneGraph) {
       if (builtScene) clearHighlight(builtScene);
       closeCatalog();
     });
-    panel.appendChild(clearBtn);
+    motifBody.appendChild(clearBtn);
 
     const motifList = buildMotifList(data);
-    panel.appendChild(motifList);
+    motifBody.appendChild(motifList);
 
     motifList.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
@@ -612,6 +656,8 @@ function buildControlPanel(data: SceneGraph) {
       highlightMotif(motifId, sceneData, builtScene);
       showCatalogEntry(motifId, sceneData);
     });
+
+    panel.appendChild(motifBody);
   }
 }
 

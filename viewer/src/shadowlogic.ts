@@ -76,23 +76,6 @@ export function buildShadowLogicPanel(
   const container = document.createElement('div');
   container.id = 'shadowlogic-panel';
 
-  const header = document.createElement('div');
-  header.style.cssText = `
-    display: flex; align-items: center; justify-content: space-between;
-    cursor: pointer; padding: 6px 0; user-select: none;
-  `;
-  header.innerHTML = `<span style="color:#ffb454;font-weight:bold;font-size:11px">▸ SHADOWLOGIC (${data.injection_points.length})</span>`;
-
-  const body = document.createElement('div');
-  body.style.display = 'none';
-
-  let expanded = false;
-  header.addEventListener('click', () => {
-    expanded = !expanded;
-    body.style.display = expanded ? 'block' : 'none';
-    header.innerHTML = `<span style="color:#ffb454;font-weight:bold;font-size:11px">${expanded ? '▾' : '▸'} SHADOWLOGIC (${data.injection_points.length})</span>`;
-  });
-
   const scoreRow = document.createElement('div');
   scoreRow.style.cssText = 'color:#c9d6e4;font-size:10px;padding:4px 0;border-bottom:1px solid rgba(255,102,0,0.2);margin-bottom:6px;';
   scoreRow.innerHTML = `
@@ -100,7 +83,7 @@ export function buildShadowLogicPanel(
     <span style="color:#ffb454;margin-left:8px">Tier:</span> ${data.exposure_tier}
     ${data.conditional_ops.length ? `<div style="margin-top:2px"><span style="color:#ffb454">Conditional ops:</span> ${data.conditional_ops.join(', ')}</div>` : ''}
   `;
-  body.appendChild(scoreRow);
+  container.appendChild(scoreRow);
 
   for (const point of data.injection_points) {
     const row = document.createElement('div');
@@ -122,11 +105,9 @@ export function buildShadowLogicPanel(
     row.addEventListener('mouseover', () => { row.style.background = 'rgba(255,102,0,0.12)'; });
     row.addEventListener('mouseout', () => { row.style.background = 'rgba(255,102,0,0.04)'; });
     row.addEventListener('click', () => onFlyTo(point.node_id));
-    body.appendChild(row);
+    container.appendChild(row);
   }
 
-  container.appendChild(header);
-  container.appendChild(body);
   return container;
 }
 

@@ -98,25 +98,6 @@ export function buildPatternsPanel(
   const container = document.createElement('div');
   container.id = 'patterns-panel';
 
-  const header = document.createElement('div');
-  header.style.cssText = `
-    display: flex; align-items: center; justify-content: space-between;
-    cursor: pointer; padding: 6px 0; user-select: none;
-  `;
-  const total = data.gradient_bottlenecks.length + data.feature_fusion_points.length
-    + data.amplification_layers.length + data.recommended_defense_points.length;
-  header.innerHTML = `<span style="color:#9fb8cc;font-size:9px;letter-spacing:.22em">▸ PATTERNS (${total})</span>`;
-
-  const body = document.createElement('div');
-  body.style.display = 'none';
-
-  let expanded = false;
-  header.addEventListener('click', () => {
-    expanded = !expanded;
-    body.style.display = expanded ? 'block' : 'none';
-    header.innerHTML = `<span style="color:#9fb8cc;font-size:9px;letter-spacing:.22em">${expanded ? '▾' : '▸'} PATTERNS (${total})</span>`;
-  });
-
   const statsRow = document.createElement('div');
   statsRow.style.cssText = 'color:#9fb8cc;font-size:9px;letter-spacing:.1em;padding:4px 0;border-bottom:1px solid rgba(140,196,255,.10);margin-bottom:6px;';
   statsRow.innerHTML = `
@@ -125,7 +106,7 @@ export function buildPatternsPanel(
     <span style="color:#c9d6e4;margin-left:8px">Chain:</span> ${data.longest_linear_chain}
     <span style="color:#c9d6e4;margin-left:8px">Score:</span> ${data.structural_score.toFixed(2)}
   `;
-  body.appendChild(statsRow);
+  container.appendChild(statsRow);
 
   const btnRow = document.createElement('div');
   btnRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;';
@@ -153,9 +134,7 @@ export function buildPatternsPanel(
     btnRow.appendChild(btn);
   }
 
-  body.appendChild(btnRow);
-  container.appendChild(header);
-  container.appendChild(body);
+  container.appendChild(btnRow);
   return container;
 }
 
