@@ -17,6 +17,8 @@ The tool is ONNX-only. It does not require PyTorch or a CUDA toolkit.
 | `operators` | ONNX operator reference keyed to security-relevant behavior |
 | `edit` | Counterfactual graph surgery (`remove-node`) with structural, loadable, or runnable validation |
 | `diff` | Compare two ONNX files after edits |
+| `export-scene` | Export a SceneGraph JSON for the 3D viewer |
+| `serve` | Launch a live 3D visualization server with counterfactual editing |
 
 Motif hits describe attack landscape (what attack types the architecture enables), not confirmed exploitability. The tool does not assign risk scores or severity tiers.
 
@@ -33,6 +35,7 @@ python3 -m venv .venv
 | `onnx`, `numpy` | Core graph parsing, motifs, topology (always installed) |
 | `onnxruntime` | `edit validate --level loadable/runnable` (via `[dev]`) |
 | `pytest` | Test suite (via `[dev]`) |
+| `fastapi`, `uvicorn` | `serve` command for live 3D visualization (via `[viz]`) |
 
 Minimal install (no runtime validation or tests):
 
@@ -64,6 +67,8 @@ graph-surgeon operators --op Conv
 graph-surgeon edit validate edited.onnx --level runnable
 graph-surgeon edit remove-node model.onnx NODE_NAME -o edited.onnx
 graph-surgeon diff baseline.onnx edited.onnx
+graph-surgeon export-scene model.onnx -o scene.json
+graph-surgeon serve model.onnx --port 9095
 ```
 
 When a motif or chain is detected, use `catalog --gadget` or `catalog --chain` for registry metadata, detection logic, and paper write-ups. Display titles use registry IDs (for example `GAP_FC_HEAD — Global Average Pool → FC Head`).
@@ -175,6 +180,72 @@ print(stats.summary())
 |-----|----------|
 | [docs/PYTHON_API.md](docs/PYTHON_API.md) | Full `GraphSurgeon` method reference, validation levels, surgery result fields |
 
+## 3D Visualization
+
+GraphSurgeon includes an interactive 3D viewer that renders ONNX model graphs as navigable cyberpunk-styled scenes with adversarial motif overlays.
+
+### Quick start
+
+```bash
+pip install -e ".[viz]"
+source .venv/bin/activate
+graph-surgeon serve model.onnx --port 9095
+# Open http://127.0.0.1:9095 in a browser
+```
+
+Or export a static scene and serve it with Vite (for development):
+
+```bash
+graph-surgeon export-scene model.onnx -o viewer/sample_scene.json
+cd viewer && npm install && ./node_modules/.bin/vite --port 5173
+```
+
+### Navigation
+
+| Control | Action |
+|---------|--------|
+| WASD | Fly through the graph (forward/back/strafe) |
+| Q / Space | Fly up |
+| E / Shift | Fly down |
+| Mouse drag | Orbit camera |
+| Scroll wheel | Zoom in/out |
+| Click node | Open node detail panel |
+| Right-click node | Counterfactual edit menu |
+| GO TO START / END | Fly to the beginning or end of the graph |
+
+### Motif and chain visualization
+
+Detected adversarial motifs and compound chains are listed in the left sidebar. Clicking a motif:
+
+- **Highlights** participating nodes in the 3D graph (others dim)
+- **Shows a translucent bounding region** around the motif's nodes, color-coded by structural significance (red = EXCEPTIONAL, magenta = PRIMARY, cyan = SECONDARY, green = TERTIARY, mint = MITIGATING)
+- **Opens a detail panel** (bottom-right) showing:
+  - Structural significance and confidence badges
+  - Technical description of the pattern
+  - Attack types the architecture enables
+  - Detection logic (how GraphSurgeon found it)
+  - Research paper references from the bundled AML corpus
+  - Clickable node IDs that fly the camera to each node
+
+Use "SHOW ALL REGIONS" to light up every motif region at once for a full attack-surface overview. Duplicate findings (e.g., 50+ BatchNorm statistics leak instances) are grouped into a single sidebar entry with a count.
+
+### Layout
+
+The viewer adapts layout to graph shape:
+
+- **Wide graphs** (branching architectures like Inception): nodes spread horizontally at each depth, barycentric positioning
+- **Narrow graphs** (sequential models like ResNet): helical/spiral layout to prevent a single vertical line
+- **Parameter-only nodes** (Unsqueeze, Reshape ops that only consume initializers): repositioned next to their consumer nodes instead of cluttering depth 0
+
+### Additional features
+
+- **Search**: type in the search bar to filter nodes by name or op type
+- **Flow playback**: "PLAY FLOW" animates execution order through the graph
+- **Model flow description**: "VIEW MODEL FLOW" opens a full-screen readable narrative
+- **Depth scrubber**: E/M/L minimap on the right edge for quick depth navigation
+- **Drag-and-drop**: drop a `scene.json` file onto the viewer to load it
+- **Counterfactual editing**: right-click a node to remove it; the server re-analyzes and the view updates live
+
 ## Comparison to Netron
 
 Netron is a graph viewer: nodes, tensors, and shapes on screen.
@@ -187,7 +258,7 @@ GraphSurgeon is an analysis and experimentation layer on top of the same ONNX fi
 - Counterfactual edits (remove a node, rewire, validate, diff against baseline)
 - JSON export for scripting and batch comparison across model variants
 
-Use Netron to see the graph; use GraphSurgeon to interpret structure, relate it to published attack classes, and test what changes when you alter the DAG.
+Use Netron to see the graph; use GraphSurgeon to interpret structure, relate it to published attack classes, test what changes when you alter the DAG, and visualize the adversarial attack surface in 3D.
 
 ## Tests
 
