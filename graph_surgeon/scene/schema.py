@@ -33,6 +33,7 @@ class SceneModelInfo:
     inputs: List[SceneInput]
     outputs: List[SceneOutput]
     flow_description: str = ""
+    source_file: str = ""
 
 
 @dataclass

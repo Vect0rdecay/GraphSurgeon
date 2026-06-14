@@ -343,6 +343,11 @@ function loadScene(data: SceneGraph) {
   const fogDensity = Math.min(0.002, 2.0 / Math.max(graphSpan, 100));
   (threeScene.fog as THREE.FogExp2).density = fogDensity;
 
+  const modelNameSpan = document.getElementById('hud-model-name');
+  if (modelNameSpan) {
+    modelNameSpan.textContent = data.model.source_file ? `// ${data.model.source_file}` : '';
+  }
+
   const hud = document.getElementById('hud-info')!;
   hud.innerHTML = `
     ${data.model.name} | ${data.model.total_nodes} nodes | depth ${data.model.max_depth} | opset ${data.model.opset}

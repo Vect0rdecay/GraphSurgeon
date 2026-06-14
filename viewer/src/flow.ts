@@ -9,7 +9,8 @@ export interface FlowState {
   elapsed: number;
 }
 
-const STEP_DURATION = 0.5;
+const STEP_DURATION = 1.5;
+const PULSE_DURATION = 0.4;
 
 let state: FlowState = {
   isPlaying: false,
@@ -20,6 +21,7 @@ let state: FlowState = {
 
 let sortedNodes: string[] = [];
 let onStepCallback: ((index: number, nodeId: string) => void) | null = null;
+let originalScales: Map<string, number> = new Map();
 
 export function initFlow(scene: SceneGraph, onStep: (index: number, nodeId: string) => void) {
   sortedNodes = [...scene.nodes]
@@ -69,45 +71,85 @@ export function updateFlow(
     return;
   }
 
+  const stepProgress = (state.elapsed - newIndex * STEP_DURATION) / STEP_DURATION;
+
   if (newIndex !== state.currentIndex) {
     state.currentIndex = newIndex;
     const nodeId = sortedNodes[newIndex];
 
-    for (const [id, mesh] of built.nodeObjects) {
-      const mat = mesh.material as THREE.MeshStandardMaterial;
-      if (id === nodeId) {
-        mat.emissiveIntensity = 2.5;
-        mat.opacity = 1.0;
-
-        const scale = mesh.scale.x * 1.3;
-        mesh.scale.setScalar(scale);
-        setTimeout(() => mesh.scale.setScalar(scale / 1.3), 200);
-      } else if (sortedNodes.indexOf(id) < newIndex) {
-        mat.emissiveIntensity = 0.8;
-        mat.opacity = 0.7;
-      } else {
-        mat.emissiveIntensity = 0.15;
-        mat.opacity = 0.25;
+    if (originalScales.size === 0) {
+      for (const [id, mesh] of built.nodeObjects) {
+        originalScales.set(id, mesh.scale.x);
       }
     }
 
-    const mesh = built.nodeObjects.get(nodeId);
-    if (mesh) {
-      const pos = mesh.position;
-      controls.target.lerp(pos, 0.3);
-      controls.update();
+    for (const [id, mesh] of built.nodeObjects) {
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      const baseScale = originalScales.get(id) ?? mesh.scale.x;
+
+      if (id === nodeId) {
+        mat.emissive.setHex(0xffffff);
+        mat.emissiveIntensity = 4.0;
+        mat.opacity = 1.0;
+        mesh.scale.setScalar(baseScale * 2.0);
+      } else if (sortedNodes.indexOf(id) < newIndex) {
+        mat.emissiveIntensity = 0.8;
+        mat.opacity = 0.7;
+        mesh.scale.setScalar(baseScale);
+      } else {
+        mat.emissiveIntensity = 0.1;
+        mat.opacity = 0.2;
+        mesh.scale.setScalar(baseScale);
+      }
     }
 
     if (onStepCallback) onStepCallback(newIndex, nodeId);
   }
+
+  // Smoothly track the active node vertically — no lateral or rotational changes
+  const activeId = sortedNodes[state.currentIndex];
+  const activeMesh = built.nodeObjects.get(activeId);
+  if (activeMesh) {
+    const targetY = activeMesh.position.y;
+    const yOffset = camera.position.y - controls.target.y;
+    controls.target.y += (targetY - controls.target.y) * 0.05;
+    camera.position.y = controls.target.y + yOffset;
+    controls.update();
+  }
+
+  const nodeId = sortedNodes[newIndex];
+  const mesh = built.nodeObjects.get(nodeId);
+  if (mesh) {
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    const baseScale = originalScales.get(nodeId) ?? mesh.scale.x / 2.0;
+
+    if (stepProgress < PULSE_DURATION) {
+      const t = stepProgress / PULSE_DURATION;
+      const pulse = 2.0 - t * 0.5;
+      mesh.scale.setScalar(baseScale * pulse);
+      mat.emissiveIntensity = 4.0 - t * 2.0;
+    } else {
+      mesh.scale.setScalar(baseScale * 1.5);
+      mat.emissiveIntensity = 2.0;
+    }
+
+    const catColor = (mesh.material as THREE.MeshStandardMaterial).color.getHex();
+    if (stepProgress > 0.1) {
+      mat.emissive.setHex(catColor);
+    }
+  }
 }
 
 function resetNodeVisuals(built: BuiltScene) {
-  for (const [, mesh] of built.nodeObjects) {
+  for (const [id, mesh] of built.nodeObjects) {
     const mat = mesh.material as THREE.MeshStandardMaterial;
+    mat.emissive.copy(mat.color);
     mat.emissiveIntensity = 0.6;
     mat.opacity = 0.9;
+    const baseScale = originalScales.get(id);
+    if (baseScale) mesh.scale.setScalar(baseScale);
   }
+  originalScales.clear();
 }
 
 export function getFlowState(): FlowState {

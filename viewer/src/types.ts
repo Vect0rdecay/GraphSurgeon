@@ -19,6 +19,7 @@ export interface SceneModelInfo {
   inputs: SceneInput[];
   outputs: SceneOutput[];
   flow_description: string;
+  source_file?: string;
 }
 
 export interface PaperRef {

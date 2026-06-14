@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from graph_surgeon.scene.schema import (
@@ -141,6 +142,7 @@ def build_scene(
             for out in graph.outputs
         ],
         flow_description=report.model_flow_description if report else "",
+        source_file=Path(model_path).name,
     )
 
     return SceneGraph(
