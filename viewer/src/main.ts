@@ -8,7 +8,7 @@ import { buildThreeScene, type BuiltScene } from './scene-builder';
 import { getAllCategories } from './colors';
 import { highlightMotif, clearHighlight, buildMotifList } from './motifs';
 import { toggleAllRegions } from './motif-regions';
-import { initFlow, startFlow, stopFlow, isFlowPlaying, updateFlow } from './flow';
+import { initFlow, startFlow, stopFlow, isFlowPlaying, stepNext, stepPrev } from './flow';
 import { initCatalogDrawer, showCatalogEntry, closeCatalog } from './catalog-drawer';
 import { initEditMode, showContextMenu, hideContextMenu } from './edit-mode';
 import { initSearch, updateSearchResults, pulseNode } from './search';
@@ -136,12 +136,9 @@ function animate() {
 
   controls.update();
 
-  if (builtScene && sceneData && isFlowPlaying()) {
-    updateFlow(delta, builtScene, camera, controls);
-  }
-
   if (builtScene) {
     updateLabelLOD(builtScene, camera);
+    builtScene.motifRegions.animate(clock.elapsedTime);
   }
 
   composer.render();
@@ -198,6 +195,20 @@ function onClick(_event: MouseEvent) {
   if (!builtScene || isFlowPlaying()) return;
 
   raycaster.setFromCamera(mouse, camera);
+
+  // Check motif region hit meshes first (only visible groups)
+  const visibleHits = builtScene.motifRegions.hitMeshes.filter(m => m.parent?.visible);
+  if (visibleHits.length > 0 && sceneData) {
+    const motifIntersects = raycaster.intersectObjects(visibleHits);
+    if (motifIntersects.length > 0) {
+      const motifId = motifIntersects[0].object.userData.motifId as string;
+      if (motifId) {
+        showCatalogEntry(motifId, sceneData);
+        return;
+      }
+    }
+  }
+
   const meshes = [...builtScene.nodeObjects.values()];
   const intersects = raycaster.intersectObjects(meshes);
 
@@ -363,15 +374,7 @@ function loadScene(data: SceneGraph) {
     <div style="font-size:10px;color:#0aa;margin-top:2px">WASD fly | Q/E up/down | mouse orbit | scroll zoom<br>click node: details | motifs: click to highlight</div>
   `;
 
-  initFlow(data, (index, nodeId) => {
-    const node = data.nodes.find(n => n.id === nodeId);
-    if (node) {
-      const flowStatus = document.getElementById('flow-status');
-      if (flowStatus) {
-        flowStatus.textContent = `[${index + 1}/${data.nodes.length}] ${node.op_type}: ${node.id}`;
-      }
-    }
-  });
+  initFlow(data);
 
   updateSearchResults(data);
   buildControlPanel(data);
@@ -397,44 +400,73 @@ function buildControlPanel(data: SceneGraph) {
     z-index: 10;
   `;
 
-  // Flow playback button
-  const flowBtn = document.createElement('button');
-  flowBtn.id = 'flow-btn';
-  flowBtn.textContent = 'PLAY FLOW';
-  flowBtn.style.cssText = `
+  // Flow step-through controls
+  const flowBtnStyle = `
     background: transparent;
     border: 1px solid #0ff;
     color: #0ff;
     font-family: 'Courier New', monospace;
-    font-size: 12px;
-    padding: 6px 12px;
+    font-size: 11px;
+    padding: 5px 0;
     cursor: pointer;
-    width: 100%;
-    margin-bottom: 4px;
     text-shadow: 0 0 6px #0ff;
-    box-shadow: 0 0 8px rgba(0,255,255,0.2);
+    flex: 1;
   `;
-  flowBtn.addEventListener('click', () => {
-    if (isFlowPlaying()) {
-      stopFlow();
-      flowBtn.textContent = 'PLAY FLOW';
-      flowBtn.style.borderColor = '#0ff';
-      flowBtn.style.color = '#0ff';
-      if (builtScene) clearHighlight(builtScene);
-    } else {
-      startFlow();
-      flowBtn.textContent = 'STOP FLOW';
-      flowBtn.style.borderColor = '#ff0066';
-      flowBtn.style.color = '#ff0066';
-      closeCatalog();
-    }
-  });
-  panel.appendChild(flowBtn);
 
-  const flowStatus = document.createElement('div');
-  flowStatus.id = 'flow-status';
-  flowStatus.style.cssText = 'color:#0ff;margin-bottom:12px;min-height:16px;';
-  panel.appendChild(flowStatus);
+  const flowStartBtn = document.createElement('button');
+  flowStartBtn.textContent = 'WALK FLOW';
+  flowStartBtn.style.cssText = flowBtnStyle + 'width:100%;margin-bottom:4px;box-shadow:0 0 8px rgba(0,255,255,0.2);';
+
+  const flowNavRow = document.createElement('div');
+  flowNavRow.style.cssText = 'display:flex;gap:4px;margin-bottom:12px;display:none;';
+
+  const prevBtn = document.createElement('button');
+  prevBtn.textContent = '◀ PREV';
+  prevBtn.style.cssText = flowBtnStyle;
+
+  const nextBtn = document.createElement('button');
+  nextBtn.textContent = 'NEXT ▶';
+  nextBtn.style.cssText = flowBtnStyle;
+
+  const exitBtn = document.createElement('button');
+  exitBtn.textContent = '✕';
+  exitBtn.style.cssText = flowBtnStyle.replace('#0ff', '#ff0066') + 'flex:0 0 32px;border-color:#ff0066;';
+
+  flowNavRow.appendChild(prevBtn);
+  flowNavRow.appendChild(nextBtn);
+  flowNavRow.appendChild(exitBtn);
+
+  const endFlow = () => {
+    stopFlow();
+    flowStartBtn.style.display = '';
+    flowNavRow.style.display = 'none';
+    if (builtScene) clearHighlight(builtScene);
+  };
+
+  flowStartBtn.addEventListener('click', () => {
+    if (!builtScene) return;
+    startFlow(builtScene, camera, controls, (nodeId) => {
+      const node = sceneData?.nodes.find(n => n.id === nodeId);
+      if (node) showDetail(node);
+    });
+    flowStartBtn.style.display = 'none';
+    flowNavRow.style.display = 'flex';
+    closeCatalog();
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (isFlowPlaying()) stepNext();
+    if (!isFlowPlaying()) endFlow();
+  });
+
+  prevBtn.addEventListener('click', () => {
+    if (isFlowPlaying()) stepPrev();
+  });
+
+  exitBtn.addEventListener('click', endFlow);
+
+  panel.appendChild(flowStartBtn);
+  panel.appendChild(flowNavRow);
 
   // Flow description — show a clickable button that opens a full overlay
   if (data.model.flow_description) {
@@ -566,10 +598,12 @@ function buildControlPanel(data: SceneGraph) {
         border-left: 2px solid transparent;
         margin-bottom: 2px;
         transition: all 0.15s;
+        display: flex;
+        align-items: center;
       }
       .motif-entry:hover {
-        border-left-color: #ff00ff;
-        background: rgba(255, 0, 255, 0.05);
+        border-left-color: #0ff;
+        background: rgba(0, 255, 255, 0.05);
       }
       .motif-title {
         color: #ddd;
@@ -578,12 +612,21 @@ function buildControlPanel(data: SceneGraph) {
       .motif-entry:hover .motif-title {
         color: #fff;
       }
+      .motif-info-btn {
+        opacity: 0.4;
+        transition: opacity 0.15s;
+      }
+      .motif-entry:hover .motif-info-btn {
+        opacity: 1;
+      }
     `;
     document.head.appendChild(style);
 
     motifList.addEventListener('click', (e) => {
-      const entry = (e.target as HTMLElement).closest('.motif-entry') as HTMLElement;
+      const target = e.target as HTMLElement;
+      const entry = target.closest('.motif-entry') as HTMLElement;
       if (!entry || !builtScene || !sceneData) return;
+
       const motifId = entry.dataset.motifId!;
       highlightMotif(motifId, sceneData, builtScene);
       showCatalogEntry(motifId, sceneData);

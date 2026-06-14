@@ -5,7 +5,7 @@ let onNodeClick: ((nodeId: string) => void) | null = null;
 
 const SIG_COLORS: Record<string, string> = {
   EXCEPTIONAL: '#ff0033',
-  PRIMARY: '#ff00ff',
+  PRIMARY: '#ff6600',
   SECONDARY: '#00ffff',
   TERTIARY: '#00ff41',
   MITIGATING: '#66ffcc',
@@ -33,7 +33,7 @@ export function initCatalogDrawer(nodeClickHandler?: (nodeId: string) => void) {
     word-wrap: break-word;
     overflow-wrap: break-word;
     background: rgba(0, 0, 0, 0.93);
-    border: 1px solid #ff00ff;
+    border: 1px solid #ff6600;
     border-radius: 4px;
     color: #ddd;
     font-family: 'Courier New', monospace;
@@ -54,6 +54,9 @@ export function showCatalogEntry(id: string, scene: SceneGraph) {
 
   if (motif) {
     showMotifDetail(motif);
+    if (!motif.description && !motif.attacks_enabled?.length) {
+      fetchAndEnrich(motif.catalog_ref || motif.id);
+    }
   } else if (chain) {
     showChainDetail(chain, scene);
   } else {
@@ -62,6 +65,32 @@ export function showCatalogEntry(id: string, scene: SceneGraph) {
   }
 
   drawerEl.style.display = 'block';
+}
+
+async function fetchAndEnrich(catalogId: string) {
+  if (!drawerEl) return;
+  try {
+    const res = await fetch(`/api/catalog/${catalogId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && drawerEl.style.display === 'block') {
+      const extra = document.createElement('div');
+      extra.style.cssText = 'margin-top:10px;border-top:1px solid #333;padding-top:8px';
+      if (data.description) {
+        extra.innerHTML += `<div style="color:#ccc;margin-bottom:8px;line-height:1.4">${data.description}</div>`;
+      }
+      if (data.attacks_enabled?.length) {
+        const chips = data.attacks_enabled.map((a: string) =>
+          `<span style="color:#ff0066;border:1px solid #660033;padding:1px 5px;border-radius:3px;font-size:10px;display:inline-block;margin:1px">${a.replace(/_/g, ' ')}</span>`
+        ).join('');
+        extra.innerHTML += `<div style="margin-bottom:8px"><div style="color:#ff0066;font-size:11px;margin-bottom:4px">ATTACKS ENABLED</div><div style="display:flex;flex-wrap:wrap;gap:2px">${chips}</div></div>`;
+      }
+      if (data.detection_logic) {
+        extra.innerHTML += `<details style="margin-bottom:8px"><summary style="color:#0ff;cursor:pointer;font-size:11px">DETECTION LOGIC</summary><div style="color:#ccc;margin-top:4px;font-size:11px;line-height:1.4;padding-left:8px;border-left:2px solid #066">${data.detection_logic}</div></details>`;
+      }
+      if (extra.innerHTML) drawerEl.appendChild(extra);
+    }
+  } catch { /* API unavailable — static scene.json mode */ }
 }
 
 function showMotifDetail(m: SceneMotif) {
@@ -83,8 +112,8 @@ function showMotifDetail(m: SceneMotif) {
 
   let html = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <h3 style="color:#ff00ff;margin:0;text-shadow:0 0 8px #f0f;font-size:14px">MOTIF</h3>
-      <span id="close-catalog" style="color:#f0f;cursor:pointer;font-size:18px">&times;</span>
+      <h3 style="color:#ff6600;margin:0;text-shadow:0 0 8px #f60;font-size:14px">MOTIF</h3>
+      <span id="close-catalog" style="color:#f60;cursor:pointer;font-size:18px">&times;</span>
     </div>
     <div style="color:#fff;font-size:13px;margin-bottom:6px;text-shadow:0 0 4px rgba(255,255,255,0.3)">${m.title}</div>
     ${badges.length > 0 ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${badges.join('')}</div>` : ''}

@@ -98,7 +98,7 @@ export function buildMotifGroups(scene: SceneGraph): MotifGroup[] {
 
 const SIG_COLORS: Record<string, string> = {
   EXCEPTIONAL: '#ff0033',
-  PRIMARY: '#ff00ff',
+  PRIMARY: '#ff6600',
   SECONDARY: '#00ffff',
   TERTIARY: '#00ff41',
   MITIGATING: '#66ffcc',
@@ -127,7 +127,8 @@ export function buildMotifList(scene: SceneGraph): HTMLElement {
 
     row.innerHTML = `
       <span style="color:${badgeColor}">${badge}</span>
-      <span class="motif-title">${group.title}${countLabel}</span>
+      <span class="motif-title" style="flex:1">${group.title}${countLabel}</span>
+      <span class="motif-info-btn" data-info-id="${group.ids[0]}" title="View details" style="color:#0ff;cursor:pointer;font-size:13px;padding:0 4px;opacity:0.6">ℹ</span>
     `;
     row.title = group.ids.join(', ');
     container.appendChild(row);
