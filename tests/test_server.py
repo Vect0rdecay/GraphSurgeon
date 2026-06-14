@@ -49,7 +49,7 @@ class TestServerAPI:
         resp = server_client.get("/api/scene?motifs=false")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["schema_version"] == "1.1"
+        assert data["schema_version"] == "1.2"
         assert len(data["nodes"]) == 9
 
     def test_get_node(self, server_client):
@@ -71,7 +71,7 @@ class TestServerAPI:
         assert resp.status_code == 200
         data = resp.json()
         assert data["surgery"]["success"] is True
-        assert data["scene"]["schema_version"] == "1.1"
+        assert data["scene"]["schema_version"] == "1.2"
 
     def test_diff_after_edit(self, server_client):
         server_client.post(

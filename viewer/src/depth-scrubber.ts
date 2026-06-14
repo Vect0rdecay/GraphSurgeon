@@ -6,7 +6,7 @@ let scrubberEl: HTMLElement | null = null;
 
 const BAND_COLORS: Record<string, string> = {
   early: '#00ffff',
-  middle: '#ff00ff',
+  middle: '#ff6600',
   late: '#ff6600',
 };
 

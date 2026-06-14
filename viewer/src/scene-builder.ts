@@ -4,6 +4,7 @@ import { computeLayout, type NodePosition } from './layout';
 import { getCategoryColor } from './colors';
 import { getGeometryForOp } from './shapes';
 import { buildMotifRegions, type MotifRegions } from './motif-regions';
+import { buildShadowLogicMarkers, type ShadowLogicMarkers } from './shadowlogic';
 
 export interface BuiltScene {
   group: THREE.Group;
@@ -12,6 +13,7 @@ export interface BuiltScene {
   positions: Map<string, NodePosition>;
   labelSprites: THREE.Sprite[];
   motifRegions: MotifRegions;
+  shadowlogicMarkers: ShadowLogicMarkers | null;
 }
 
 export function buildThreeScene(data: SceneGraph): BuiltScene {
@@ -62,7 +64,13 @@ export function buildThreeScene(data: SceneGraph): BuiltScene {
   const motifRegions = buildMotifRegions(data, positions);
   group.add(motifRegions.allGroup);
 
-  return { group, nodeObjects, edgeLines, positions, labelSprites, motifRegions };
+  let shadowlogicMarkers: ShadowLogicMarkers | null = null;
+  if (data.shadowlogic && data.shadowlogic.injection_points.length > 0) {
+    shadowlogicMarkers = buildShadowLogicMarkers(data.shadowlogic, positions);
+    group.add(shadowlogicMarkers.group);
+  }
+
+  return { group, nodeObjects, edgeLines, positions, labelSprites, motifRegions, shadowlogicMarkers };
 }
 
 function buildEdges(data: SceneGraph, positions: Map<string, NodePosition>): THREE.Group {

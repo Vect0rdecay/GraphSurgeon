@@ -525,7 +525,7 @@ class StructuralPatternAnalyzer:
                     id=f"CONCAT-FUSION-{node_id}",
                     name=f"Perturbation Fusion at {node_id}",
                     category=PatternCategory.PERTURBATION_FUSION,
-                    risk=risk,
+                    weight=weight,
                     nodes_involved=[node_id] + self.reverse_adjacency.get(node_id, []),
                     description=f"Concat operation merges {num_inputs} input paths along axis={axis}. "
                                f"This creates a perturbation aggregation point where adversarial "
@@ -638,7 +638,7 @@ class StructuralPatternAnalyzer:
                     id=f"LINEAR-CHAIN-{chain[0]}",
                     name=f"Linear Chain ({len(chain)} ops)",
                     category=PatternCategory.GRADIENT_FLOW,
-                    risk=risk,
+                    weight=weight,
                     nodes_involved=chain,
                     description=f"Chain of {len(chain)} consecutive linear operations without "
                                f"non-linearity breaks. This creates a gradient highway that "
@@ -684,7 +684,7 @@ class StructuralPatternAnalyzer:
                     id=f"FAN-IN-{node_id}",
                     name=f"High Fan-In Node ({fan_in} inputs)",
                     category=PatternCategory.PERTURBATION_FUSION,
-                    risk=risk,
+                    weight=weight,
                     nodes_involved=[node_id] + self.reverse_adjacency.get(node_id, []),
                     description=f"Node '{node_id}' ({op_type}) receives {fan_in} inputs. "
                                f"This creates a perturbation aggregation point where "
@@ -1402,7 +1402,7 @@ class StructuralPatternAnalyzer:
                 id="VALID-CONV-BOUNDARY",
                 name=f"VALID_CONV_BOUNDARY — Valid Conv Edge Sensitivity ({len(valid_conv_nodes)} nodes)",
                 category=PatternCategory.FEATURE_EXTRACTION,
-                risk=risk,
+                weight=weight,
                 nodes_involved=valid_conv_nodes,
                 description=f"Model has {len(valid_conv_nodes)} convolutions with pads=0 (valid mode). "
                            f"{'Including ' + str(len(early_valid)) + ' in early layers. ' if early_valid else ''}"

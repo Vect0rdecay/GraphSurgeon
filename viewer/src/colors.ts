@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 const CATEGORY_COLORS: Record<string, number> = {
   feature_extraction: 0x00ffff,  // cyan
-  normalization:      0xff00ff,  // magenta
+  normalization:      0xff6699,  // pink
   activation:         0x00ff41,  // electric green
   pooling:            0xff6600,  // orange
   linear:             0xffff00,  // yellow

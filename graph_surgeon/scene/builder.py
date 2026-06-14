@@ -18,6 +18,9 @@ from graph_surgeon.scene.schema import (
     SceneMotif,
     SceneNode,
     SceneOutput,
+    SceneShadowLogic,
+    SceneShadowLogicPoint,
+    SceneStructuralPatterns,
 )
 
 
@@ -83,6 +86,8 @@ def build_scene(
     initializer_names: Set[str] = set(graph.initializers.keys())
     graph_input_names: Set[str] = {inp.name for inp in graph.inputs}
 
+    node_profiles = getattr(report, "node_profiles", {}) if report else {}
+
     nodes: List[SceneNode] = []
     for node in graph.nodes:
         depth = node_depths.get(node.name, 0)
@@ -94,6 +99,8 @@ def build_scene(
         attrs = {}
         for k, v in node.attributes.items():
             attrs[k] = _serialize_attr(v)
+
+        profile = node_profiles.get(node.name)
 
         nodes.append(SceneNode(
             id=node.name,
@@ -108,6 +115,11 @@ def build_scene(
             param_count=param_counts.get(node.name, 0),
             motif_ids=sorted(motif_map.get(node.name, [])),
             gadget_ids=sorted(gadget_map.get(node.name, [])),
+            gradient_sensitivity=getattr(profile, "gradient_sensitivity", 0.0) if profile else 0.0,
+            lipschitz_estimate=getattr(profile, "lipschitz_estimate", 1.0) if profile else 1.0,
+            perturbation_amplification=getattr(profile, "perturbation_amplification", 1.0) if profile else 1.0,
+            shadowlogic_capacity=getattr(profile, "shadowlogic_capacity", 0.0) if profile else 0.0,
+            extraction_leakage=getattr(profile, "extraction_leakage", 0.0) if profile else 0.0,
         ))
 
     nodes.sort(key=lambda n: n.exec_index)
@@ -118,6 +130,10 @@ def build_scene(
     chains: List[SceneChain] = []
     if report:
         motifs, chains = _extract_motifs_and_chains(report)
+
+    scene_shadowlogic = _extract_shadowlogic(report, {n.id for n in nodes})
+
+    scene_patterns = _extract_structural_patterns(model_path)
 
     model_info = SceneModelInfo(
         name=graph.name or "unknown",
@@ -152,6 +168,55 @@ def build_scene(
         edges=edges,
         motifs=motifs,
         chains=chains,
+        shadowlogic=scene_shadowlogic,
+        structural_patterns=scene_patterns,
+    )
+
+
+def _extract_shadowlogic(report, node_ids: Set[str]) -> Optional[SceneShadowLogic]:
+    if not report:
+        return None
+    sl = getattr(report, "shadowlogic_assessment", None)
+    if not sl:
+        return None
+
+    points = []
+    for ip in getattr(sl, "injection_points", []):
+        if ip.node_id not in node_ids:
+            continue
+        points.append(SceneShadowLogicPoint(
+            node_id=ip.node_id,
+            location=ip.location,
+            description=ip.description,
+            injection_complexity=ip.injection_complexity,
+            detection_difficulty=ip.detection_difficulty,
+        ))
+
+    return SceneShadowLogic(
+        structural_exposure=sl.susceptibility_score,
+        exposure_tier=sl.susceptibility_level,
+        conditional_ops=list(sl.conditional_ops_found),
+        injection_points=points,
+    )
+
+
+def _extract_structural_patterns(model_path: str) -> Optional[SceneStructuralPatterns]:
+    try:
+        from graph_surgeon.parsers.onnx_parser import analyze_onnx_patterns
+
+        pat = analyze_onnx_patterns(model_path)
+    except Exception:
+        return None
+
+    return SceneStructuralPatterns(
+        gradient_bottlenecks=list(pat.gradient_bottlenecks),
+        feature_fusion_points=list(pat.feature_fusion_points),
+        amplification_layers=list(pat.amplification_layers),
+        recommended_defense_points=list(pat.recommended_defense_points),
+        max_fan_in=pat.max_fan_in,
+        max_fan_out=pat.max_fan_out,
+        longest_linear_chain=pat.longest_linear_chain,
+        structural_score=pat.structural_score,
     )
 
 

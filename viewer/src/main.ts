@@ -13,6 +13,8 @@ import { initCatalogDrawer, showCatalogEntry, closeCatalog } from './catalog-dra
 import { initEditMode, showContextMenu, hideContextMenu } from './edit-mode';
 import { initSearch, updateSearchResults, pulseNode } from './search';
 import { updateLabelLOD } from './lod';
+import { buildShadowLogicPanel, showShadowLogicDetail } from './shadowlogic';
+import { buildPatternsPanel, clearPatternHighlight } from './patterns';
 
 let renderer: THREE.WebGLRenderer;
 let threeScene: THREE.Scene;
@@ -65,7 +67,7 @@ function init() {
   dir1.position.set(1, 1, 1);
   threeScene.add(dir1);
 
-  const dir2 = new THREE.DirectionalLight(0xff00ff, 1.0);
+  const dir2 = new THREE.DirectionalLight(0xff6633, 1.0);
   dir2.position.set(-1, -1, -1);
   threeScene.add(dir2);
 
@@ -139,6 +141,9 @@ function animate() {
   if (builtScene) {
     updateLabelLOD(builtScene, camera);
     builtScene.motifRegions.animate(clock.elapsedTime);
+    if (builtScene.shadowlogicMarkers) {
+      builtScene.shadowlogicMarkers.animate(clock.elapsedTime);
+    }
   }
 
   composer.render();
@@ -196,7 +201,22 @@ function onClick(_event: MouseEvent) {
 
   raycaster.setFromCamera(mouse, camera);
 
-  // Check motif region hit meshes first (only visible groups)
+  // Check shadowlogic hit meshes
+  if (builtScene.shadowlogicMarkers && builtScene.shadowlogicMarkers.group.visible) {
+    const slHits = builtScene.shadowlogicMarkers.hitMeshes;
+    const slIntersects = raycaster.intersectObjects(slHits);
+    if (slIntersects.length > 0) {
+      const point = slIntersects[0].object.userData.shadowlogicPoint;
+      if (point) {
+        const popup = showShadowLogicDetail(point);
+        document.getElementById('app')!.appendChild(popup);
+        popup.querySelector('#sl-detail-close')!.addEventListener('click', () => popup.remove());
+        return;
+      }
+    }
+  }
+
+  // Check motif region hit meshes (only visible groups)
   const visibleHits = builtScene.motifRegions.hitMeshes.filter(m => m.parent?.visible);
   if (visibleHits.length > 0 && sceneData) {
     const motifIntersects = raycaster.intersectObjects(visibleHits);
@@ -247,6 +267,39 @@ function showDetail(node: SceneNode) {
     ? `<div class="field"><span class="label">gadgets:</span> <span class="value">${node.gadget_ids.join(', ')}</span></div>`
     : '';
 
+  const profileRows: string[] = [];
+  const pRow = (label: string, val: number, desc: string, color: string) => {
+    const barPct = Math.min(val / 10, 1) * 100;
+    return `<div style="margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:${color};font-weight:bold;font-size:11px">${label}</span>
+        <span style="color:#fff;font-size:12px">${val.toFixed(2)}</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.06);height:4px;border-radius:2px;margin:3px 0">
+        <div style="background:${color};height:100%;width:${barPct}%;border-radius:2px"></div>
+      </div>
+      <div style="color:#aaa;font-size:9px">${desc}</div>
+    </div>`;
+  };
+  if (node.gradient_sensitivity > 0)
+    profileRows.push(pRow('Gradient Sensitivity', node.gradient_sensitivity,
+      'How much this node amplifies gradient signals during backpropagation', '#0ff'));
+  if (node.lipschitz_estimate > 1)
+    profileRows.push(pRow('Lipschitz Estimate', node.lipschitz_estimate,
+      'Upper bound on output change per unit input change — higher means less stable', '#ff6600'));
+  if (node.perturbation_amplification > 1)
+    profileRows.push(pRow('Perturbation Amplification', node.perturbation_amplification,
+      'Factor by which small input perturbations grow passing through this node', '#ff3300'));
+  if (node.shadowlogic_capacity > 0)
+    profileRows.push(pRow('ShadowLogic Capacity', node.shadowlogic_capacity,
+      'Spare parameter capacity that could conceal injected logic', '#ff6600'));
+  if (node.extraction_leakage > 0)
+    profileRows.push(pRow('Extraction Leakage', node.extraction_leakage,
+      'How much internal representation this node exposes to output observers', '#00ff41'));
+  const profileSection = profileRows.length > 0
+    ? `<h2 style="margin-top:10px;color:#ff6600;border-top:1px solid rgba(255,102,0,0.3);padding-top:8px">Structural Profile</h2>${profileRows.join('')}`
+    : '';
+
   content.innerHTML = `
     <h2>${node.op_type}: ${node.id}</h2>
     <div class="field"><span class="label">category:</span> <span class="value">${node.category}</span></div>
@@ -258,6 +311,7 @@ function showDetail(node: SceneNode) {
     ${node.param_count > 0 ? `<div class="field"><span class="label">params:</span> <span class="value">${node.param_count.toLocaleString()}</span></div>` : ''}
     ${motifs}
     ${gadgets}
+    ${profileSection}
     ${attrs ? `<h2 style="margin-top:8px">Attributes</h2>${attrs}` : ''}
   `;
 
@@ -516,15 +570,53 @@ function buildControlPanel(data: SceneGraph) {
 
   panel.appendChild(navRow);
 
+  // ShadowLogic panel
+  if (data.shadowlogic && data.shadowlogic.injection_points.length > 0 && builtScene) {
+    const slPanel = buildShadowLogicPanel(data.shadowlogic, (nodeId) => {
+      if (!builtScene) return;
+      const mesh = builtScene.nodeObjects.get(nodeId);
+      if (!mesh) return;
+      const yOffset = camera.position.y - controls.target.y;
+      controls.target.set(mesh.position.x, mesh.position.y, mesh.position.z);
+      camera.position.y = mesh.position.y + yOffset;
+      controls.update();
+      const node = data.nodes.find(n => n.id === nodeId);
+      if (node) showDetail(node);
+    });
+    panel.appendChild(slPanel);
+
+    const slToggleBtn = document.createElement('button');
+    slToggleBtn.textContent = 'SHOW INJECTION POINTS';
+    slToggleBtn.style.cssText = `
+      background:transparent;border:1px solid #ff6600;color:#ff6600;
+      font-family:'Courier New',monospace;font-size:10px;padding:4px 8px;
+      cursor:pointer;width:100%;margin-bottom:6px;
+      text-shadow:0 0 4px #f60;box-shadow:0 0 6px rgba(255,102,0,0.15);
+    `;
+    slToggleBtn.addEventListener('click', () => {
+      if (!builtScene?.shadowlogicMarkers) return;
+      const g = builtScene.shadowlogicMarkers.group;
+      g.visible = !g.visible;
+      slToggleBtn.textContent = g.visible ? 'HIDE INJECTION POINTS' : 'SHOW INJECTION POINTS';
+    });
+    panel.appendChild(slToggleBtn);
+  }
+
+  // Structural patterns panel
+  if (data.structural_patterns && builtScene) {
+    const patternsEl = buildPatternsPanel(data.structural_patterns, builtScene);
+    panel.appendChild(patternsEl);
+  }
+
   // Show all regions toggle
   if (data.motifs.length > 0 || data.chains.length > 0) {
     const regionBtn = document.createElement('button');
     regionBtn.textContent = 'SHOW ALL REGIONS';
     regionBtn.style.cssText = `
-      background:transparent;border:1px solid #ff00ff;color:#ff00ff;
+      background:transparent;border:1px solid #ff6600;color:#ff6600;
       font-family:'Courier New',monospace;font-size:10px;padding:4px 8px;
       cursor:pointer;width:100%;margin-bottom:6px;
-      text-shadow:0 0 4px #f0f;box-shadow:0 0 6px rgba(255,0,255,0.15);
+      text-shadow:0 0 4px #f60;box-shadow:0 0 6px rgba(255,102,0,0.15);
     `;
     regionBtn.addEventListener('click', () => {
       if (!builtScene) return;
@@ -537,10 +629,10 @@ function buildControlPanel(data: SceneGraph) {
   // Motifs section — collapsible header
   if (data.motifs.length > 0 || data.chains.length > 0) {
     const motifToggle = document.createElement('button');
-    motifToggle.innerHTML = `<span style="color:#ff00ff;text-shadow:0 0 6px #f0f">MOTIFS & CHAINS (${data.motifs.length + data.chains.length})</span> <span id="motif-arrow" style="color:#ff00ff">&#9660;</span>`;
+    motifToggle.innerHTML = `<span style="color:#ff6600;text-shadow:0 0 6px #f60">MOTIFS & CHAINS (${data.motifs.length + data.chains.length})</span> <span id="motif-arrow" style="color:#ff6600">&#9660;</span>`;
     motifToggle.style.cssText = `
       background: transparent;
-      border: 1px solid #ff00ff;
+      border: 1px solid #ff6600;
       font-family: 'Courier New', monospace;
       font-size: 11px;
       padding: 4px 8px;
@@ -548,7 +640,7 @@ function buildControlPanel(data: SceneGraph) {
       width: 100%;
       margin-bottom: 4px;
       text-align: left;
-      box-shadow: 0 0 6px rgba(255,0,255,0.15);
+      box-shadow: 0 0 6px rgba(255,102,0,0.15);
     `;
 
     const motifBody = document.createElement('div');

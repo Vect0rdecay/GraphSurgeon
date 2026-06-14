@@ -189,7 +189,7 @@ function createDiffPanel() {
 
   const closeBtn = document.createElement('span');
   closeBtn.textContent = '×';
-  closeBtn.style.cssText = 'position:absolute;top:4px;right:8px;cursor:pointer;color:#f0f;font-size:16px;';
+  closeBtn.style.cssText = 'position:absolute;top:4px;right:8px;cursor:pointer;color:#ff6600;font-size:16px;';
   closeBtn.addEventListener('click', hideDiffPanel);
   diffPanel.appendChild(closeBtn);
 

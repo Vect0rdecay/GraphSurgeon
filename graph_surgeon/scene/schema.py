@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 
-SCHEMA_VERSION = "1.1"
+SCHEMA_VERSION = "1.2"
 
 
 @dataclass
@@ -50,6 +50,11 @@ class SceneNode:
     param_count: int = 0
     motif_ids: List[str] = field(default_factory=list)
     gadget_ids: List[str] = field(default_factory=list)
+    gradient_sensitivity: float = 0.0
+    lipschitz_estimate: float = 1.0
+    perturbation_amplification: float = 1.0
+    shadowlogic_capacity: float = 0.0
+    extraction_leakage: float = 0.0
 
 
 @dataclass
@@ -93,6 +98,35 @@ class SceneChain:
 
 
 @dataclass
+class SceneShadowLogicPoint:
+    node_id: str
+    location: str
+    description: str
+    injection_complexity: str
+    detection_difficulty: str
+
+
+@dataclass
+class SceneShadowLogic:
+    structural_exposure: float = 0.0
+    exposure_tier: str = ""
+    conditional_ops: List[str] = field(default_factory=list)
+    injection_points: List[SceneShadowLogicPoint] = field(default_factory=list)
+
+
+@dataclass
+class SceneStructuralPatterns:
+    gradient_bottlenecks: List[str] = field(default_factory=list)
+    feature_fusion_points: List[str] = field(default_factory=list)
+    amplification_layers: List[str] = field(default_factory=list)
+    recommended_defense_points: List[str] = field(default_factory=list)
+    max_fan_in: int = 0
+    max_fan_out: int = 0
+    longest_linear_chain: int = 0
+    structural_score: float = 0.0
+
+
+@dataclass
 class SceneGraph:
     schema_version: str
     model: SceneModelInfo
@@ -100,6 +134,8 @@ class SceneGraph:
     edges: List[SceneEdge]
     motifs: List[SceneMotif] = field(default_factory=list)
     chains: List[SceneChain] = field(default_factory=list)
+    shadowlogic: Optional[SceneShadowLogic] = None
+    structural_patterns: Optional[SceneStructuralPatterns] = None
 
     def to_dict(self) -> dict:
         """Serialize to a plain dict suitable for JSON export."""
