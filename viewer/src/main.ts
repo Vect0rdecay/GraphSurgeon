@@ -12,7 +12,6 @@ import { initFlow, startFlow, stopFlow, isFlowPlaying, updateFlow } from './flow
 import { initCatalogDrawer, showCatalogEntry, closeCatalog } from './catalog-drawer';
 import { initEditMode, showContextMenu, hideContextMenu } from './edit-mode';
 import { initSearch, updateSearchResults, pulseNode } from './search';
-import { initDepthScrubber, updateScrubber, flyToBand } from './depth-scrubber';
 import { updateLabelLOD } from './lod';
 
 let renderer: THREE.WebGLRenderer;
@@ -97,9 +96,6 @@ function init() {
   setupEditMode();
   initSearch((nodeId) => {
     if (builtScene) pulseNode(nodeId, builtScene, camera, controls);
-  });
-  initDepthScrubber((position) => {
-    if (builtScene && sceneData) flyToBand(position, sceneData, builtScene, camera, controls);
   });
   buildLegend();
   renderer.domElement.addEventListener('contextmenu', onRightClick);
@@ -229,7 +225,7 @@ function showDetail(node: SceneNode) {
   const content = document.getElementById('detail-content')!;
 
   const attrs = Object.entries(node.attributes)
-    .map(([k, v]) => `<div class="field"><span class="label">${k}:</span> <span class="value">${JSON.stringify(v)}</span></div>`)
+    .map(([k, v]) => `<div class="field"><span class="label">${k}:</span> <span class="value" style="word-break:break-all">${JSON.stringify(v)}</span></div>`)
     .join('');
 
   const motifs = node.motif_ids.length > 0
@@ -246,8 +242,8 @@ function showDetail(node: SceneNode) {
     <div class="field"><span class="label">depth:</span> <span class="value">${node.depth}</span></div>
     <div class="field"><span class="label">position:</span> <span class="value">${node.position}</span></div>
     <div class="field"><span class="label">exec_index:</span> <span class="value">${node.exec_index}</span></div>
-    <div class="field"><span class="label">inputs:</span> <span class="value">${node.inputs.join(', ')}</span></div>
-    <div class="field"><span class="label">outputs:</span> <span class="value">${node.outputs.join(', ')}</span></div>
+    <div class="field"><span class="label">inputs:</span> <span class="value" style="word-break:break-all">${node.inputs.join(', ')}</span></div>
+    <div class="field"><span class="label">outputs:</span> <span class="value" style="word-break:break-all">${node.outputs.join(', ')}</span></div>
     ${node.param_count > 0 ? `<div class="field"><span class="label">params:</span> <span class="value">${node.param_count.toLocaleString()}</span></div>` : ''}
     ${motifs}
     ${gadgets}
@@ -269,12 +265,25 @@ function closeDetail() {
 function buildLegend() {
   const legend = document.getElementById('legend')!;
   const cats = getAllCategories();
-  legend.innerHTML = cats
+  const entries = cats
     .map(([name, color]) => {
       const hex = '#' + color.toString(16).padStart(6, '0');
       return `<div class="entry"><span class="swatch" style="background:${hex};box-shadow:0 0 4px ${hex}"></span>${name}</div>`;
     })
     .join('');
+
+  legend.innerHTML = `
+    <div id="legend-toggle" style="cursor:pointer;pointer-events:all;color:#0ff;font-size:11px;text-shadow:0 0 6px #0ff;margin-bottom:4px;user-select:none">▼ NODE TYPES</div>
+    <div id="legend-entries">${entries}</div>
+  `;
+
+  const toggle = document.getElementById('legend-toggle')!;
+  const entriesDiv = document.getElementById('legend-entries')!;
+  toggle.addEventListener('click', () => {
+    const collapsed = entriesDiv.style.display === 'none';
+    entriesDiv.style.display = collapsed ? '' : 'none';
+    toggle.textContent = collapsed ? '▼ NODE TYPES' : '▶ NODE TYPES';
+  });
 }
 
 function setupDragDrop() {
@@ -365,7 +374,6 @@ function loadScene(data: SceneGraph) {
   });
 
   updateSearchResults(data);
-  updateScrubber(data);
   buildControlPanel(data);
   frameAll();
 }

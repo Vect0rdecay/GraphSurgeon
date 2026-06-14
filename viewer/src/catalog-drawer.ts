@@ -28,7 +28,10 @@ export function initCatalogDrawer(nodeClickHandler?: (nodeId: string) => void) {
     right: 16px;
     width: 400px;
     max-height: 60vh;
+    overflow-x: hidden;
     overflow-y: auto;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
     background: rgba(0, 0, 0, 0.93);
     border: 1px solid #ff00ff;
     border-radius: 4px;
