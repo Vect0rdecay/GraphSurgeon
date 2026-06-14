@@ -14,7 +14,7 @@ import { initEditMode, showContextMenu, hideContextMenu } from './edit-mode';
 import { initSearch, updateSearchResults, pulseNode } from './search';
 import { updateLabelLOD } from './lod';
 import { buildShadowLogicPanel, showShadowLogicDetail } from './shadowlogic';
-import { buildPatternsPanel } from './patterns';
+import { buildPatternsPanel, getNodePatternCategories } from './patterns';
 import { createSpaceBgTexture } from './space-bg';
 
 let renderer: THREE.WebGLRenderer;
@@ -302,6 +302,20 @@ function showDetail(node: SceneNode) {
     ? `<div class="section-head" style="margin-top:14px">STRUCTURAL PROFILE</div>${profileRows.join('')}`
     : '';
 
+  let patternSection = '';
+  if (sceneData?.structural_patterns) {
+    const cats = getNodePatternCategories(node.id, sceneData.structural_patterns);
+    if (cats.length > 0) {
+      const items = cats.map(c =>
+        `<div style="margin-bottom:8px;border-left:3px solid ${c.color};padding-left:8px">
+          <div style="font-size:9px;letter-spacing:.2em;color:${c.color};margin-bottom:2px">${c.label}</div>
+          <div style="font-family:var(--serif);font-size:10px;color:var(--sub);font-style:italic;line-height:1.5">${c.description}</div>
+        </div>`
+      ).join('');
+      patternSection = `<div class="section-head" style="margin-top:14px">PATTERN ROLES</div>${items}`;
+    }
+  }
+
   content.innerHTML = `
     <div style="font-size:10px;letter-spacing:.26em;color:var(--cyan)">${node.category.toUpperCase()}</div>
     <h2>${node.op_type}</h2>
@@ -314,6 +328,7 @@ function showDetail(node: SceneNode) {
     ${node.param_count > 0 ? `<div class="field"><span class="label">PARAMS</span> <span class="value">${node.param_count.toLocaleString()}</span></div>` : ''}
     ${motifs}
     ${gadgets}
+    ${patternSection}
     ${profileSection}
     ${attrs ? `<div class="section-head" style="margin-top:14px">ATTRIBUTES</div>${attrs}` : ''}
   `;
@@ -556,12 +571,15 @@ function buildControlPanel(data: SceneGraph) {
 
     const slPanel = buildShadowLogicPanel(data.shadowlogic, (nodeId) => {
       if (!builtScene) return;
+      pulseNode(nodeId, builtScene, camera, controls);
+      if (selectedMesh) {
+        const oldMat = selectedMesh.material as THREE.MeshStandardMaterial;
+        oldMat.emissiveIntensity = 0.6;
+      }
       const mesh = builtScene.nodeObjects.get(nodeId);
-      if (!mesh) return;
-      const yOffset = camera.position.y - controls.target.y;
-      controls.target.set(mesh.position.x, mesh.position.y, mesh.position.z);
-      camera.position.y = mesh.position.y + yOffset;
-      controls.update();
+      if (mesh) {
+        selectedMesh = mesh;
+      }
       const node = data.nodes.find(n => n.id === nodeId);
       if (node) showDetail(node);
     });

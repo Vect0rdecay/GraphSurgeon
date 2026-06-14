@@ -5,6 +5,8 @@ import type { BuiltScene } from './scene-builder';
 let searchInput: HTMLInputElement | null = null;
 let resultsList: HTMLElement | null = null;
 let pulseTimeouts: number[] = [];
+let lastPulsed: THREE.Mesh | null = null;
+let lastPulsedScale = 1;
 
 export function initSearch(
   onSelect: (nodeId: string) => void,
@@ -132,14 +134,38 @@ export function pulseNode(
   for (const t of pulseTimeouts) clearTimeout(t);
   pulseTimeouts = [];
 
-  const mat = mesh.material as THREE.MeshStandardMaterial;
+  if (lastPulsed && lastPulsed !== mesh) {
+    const oldMat = lastPulsed.material as THREE.MeshStandardMaterial;
+    oldMat.emissiveIntensity = 0.6;
+    lastPulsed.scale.setScalar(lastPulsedScale);
+  }
 
-  for (let i = 0; i < 6; i++) {
+  const mat = mesh.material as THREE.MeshStandardMaterial;
+  const baseScale = mesh.scale.x;
+  lastPulsed = mesh;
+  lastPulsedScale = baseScale;
+
+  for (let i = 0; i < 8; i++) {
     const t = window.setTimeout(() => {
-      mat.emissiveIntensity = i % 2 === 0 ? 2.5 : 0.6;
-    }, i * 200);
+      if (i % 2 === 0) {
+        mat.emissiveIntensity = 3.5;
+        mat.emissive.setHex(0xffffff);
+        mesh.scale.setScalar(baseScale * 1.8);
+      } else {
+        mat.emissive.copy(mat.color);
+        mat.emissiveIntensity = 1.5;
+        mesh.scale.setScalar(baseScale * 1.3);
+      }
+    }, i * 180);
     pulseTimeouts.push(t);
   }
+
+  const settle = window.setTimeout(() => {
+    mat.emissive.copy(mat.color);
+    mat.emissiveIntensity = 2.0;
+    mesh.scale.setScalar(baseScale * 1.4);
+  }, 8 * 180);
+  pulseTimeouts.push(settle);
 
   const pos = mesh.position;
   camera.position.lerp(

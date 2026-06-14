@@ -18,6 +18,13 @@ const PATTERN_LABELS: Record<PatternCategory, string> = {
   recommended_defense_points: 'DEFENSE PTS',
 };
 
+const PATTERN_DESCRIPTIONS: Record<PatternCategory, string> = {
+  gradient_bottlenecks: 'Nodes where gradient flow narrows through a single path — small perturbations here disproportionately affect downstream layers.',
+  feature_fusion_points: 'Nodes where multiple feature streams merge — structural leverage points where injected signals from separate branches combine.',
+  amplification_layers: 'Nodes with high fan-out or parameter density that amplify signal magnitude — perturbations passing through these grow larger.',
+  recommended_defense_points: 'Strategic locations where monitoring or clamping would intercept the widest range of structural anomalies.',
+};
+
 const ALL_CATEGORIES: PatternCategory[] = [
   'gradient_bottlenecks',
   'feature_fusion_points',
@@ -108,41 +115,68 @@ export function buildPatternsPanel(
   `;
   container.appendChild(statsRow);
 
-  const btnRow = document.createElement('div');
-  btnRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;';
-
   for (const cat of ALL_CATEGORIES) {
     const count = data[cat].length;
+    if (count === 0) continue;
     const color = '#' + PATTERN_COLORS[cat].toString(16).padStart(6, '0');
+
+    const group = document.createElement('div');
+    group.style.cssText = 'margin-bottom:10px;';
+
     const btn = document.createElement('button');
     btn.textContent = `${PATTERN_LABELS[cat]} (${count})`;
     btn.dataset.category = cat;
     btn.style.cssText = `
       background: rgba(4,8,14,.55); border: 1px solid ${color}; color: ${color};
       font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: .14em;
-      padding: 4px 8px; cursor: pointer; transition: .18s;
+      padding: 4px 8px; cursor: pointer; transition: .18s; width: 100%; text-align: left;
     `;
     btn.addEventListener('click', () => {
       if (activeCategory === cat) {
         clearPatternHighlight(built);
-        updateBtnStates(btnRow);
+        updateAllBtnStates(container);
       } else {
         applyPatternHighlight(cat, data, built);
-        updateBtnStates(btnRow);
+        updateAllBtnStates(container);
       }
     });
-    btnRow.appendChild(btn);
+    group.appendChild(btn);
+
+    const desc = document.createElement('div');
+    desc.style.cssText = `font-family:'Spectral',Georgia,serif;font-size:10px;color:#9fb8cc;font-style:italic;margin-top:4px;line-height:1.5;padding-left:2px;`;
+    desc.textContent = PATTERN_DESCRIPTIONS[cat];
+    group.appendChild(desc);
+
+    container.appendChild(group);
   }
 
-  container.appendChild(btnRow);
   return container;
 }
 
-function updateBtnStates(row: HTMLElement) {
-  row.querySelectorAll('button').forEach(btn => {
+function updateAllBtnStates(container: HTMLElement) {
+  container.querySelectorAll('button').forEach(btn => {
     const cat = btn.dataset.category as PatternCategory;
+    if (!cat) return;
     const isActive = activeCategory === cat;
-    btn.style.background = isActive ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.4)';
+    btn.style.background = isActive ? 'rgba(255,255,255,0.1)' : 'rgba(4,8,14,.55)';
     btn.style.fontWeight = isActive ? 'bold' : 'normal';
   });
+}
+
+export function getNodePatternCategories(
+  nodeId: string,
+  data: SceneStructuralPatterns,
+): { category: PatternCategory; label: string; description: string; color: string }[] {
+  const results: { category: PatternCategory; label: string; description: string; color: string }[] = [];
+  for (const cat of ALL_CATEGORIES) {
+    if (data[cat].includes(nodeId)) {
+      results.push({
+        category: cat,
+        label: PATTERN_LABELS[cat],
+        description: PATTERN_DESCRIPTIONS[cat],
+        color: '#' + PATTERN_COLORS[cat].toString(16).padStart(6, '0'),
+      });
+    }
+  }
+  return results;
 }
