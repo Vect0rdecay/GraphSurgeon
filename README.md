@@ -182,7 +182,7 @@ print(stats.summary())
 
 ## 3D Visualization
 
-GraphSurgeon includes an interactive 3D viewer that renders ONNX model graphs as navigable cyberpunk-styled scenes with adversarial motif overlays.
+GraphSurgeon includes an interactive 3D viewer that renders ONNX model graphs as navigable scenes with a space-nebula backdrop, Superluminal-inspired typography, and structural analysis overlays.
 
 ### Quick start
 
@@ -211,14 +211,14 @@ cd viewer && npm install && ./node_modules/.bin/vite --port 5173
 | Scroll wheel | Zoom in/out |
 | Click node | Open node detail panel |
 | Right-click node | Counterfactual edit menu |
-| GO TO START / END | Fly to the beginning or end of the graph |
+| START / END | Fly to the beginning or end of the graph |
 
 ### Motif and chain visualization
 
 Detected adversarial motifs and compound chains are listed in the left sidebar. Clicking a motif:
 
 - **Highlights** participating nodes in the 3D graph (others dim)
-- **Shows a translucent bounding region** around the motif's nodes, color-coded by structural significance (red = EXCEPTIONAL, magenta = PRIMARY, cyan = SECONDARY, green = TERTIARY, mint = MITIGATING)
+- **Shows a translucent bounding region** around the motif's nodes, color-coded by structural significance (red = EXCEPTIONAL, amber = PRIMARY, cyan = SECONDARY, green = TERTIARY/MITIGATING)
 - **Opens a detail panel** (bottom-right) showing:
   - Structural significance and confidence badges
   - Technical description of the pattern
@@ -240,9 +240,12 @@ The viewer adapts layout to graph shape:
 ### Additional features
 
 - **Search**: type in the search bar to filter nodes by name or op type
-- **Flow playback**: "PLAY FLOW" animates execution order through the graph
+- **Flow walk**: "WALK FLOW" steps through execution order depth-by-depth with a detail panel showing each level's nodes
 - **Model flow description**: "VIEW MODEL FLOW" opens a full-screen readable narrative
-- **Depth scrubber**: E/M/L minimap on the right edge for quick depth navigation
+- **ShadowLogic overlay**: shows injection point markers on the 3D graph with fly-to navigation and per-point detail popups
+- **Structural patterns**: toggle highlights for gradient bottlenecks, fusion points, amplification layers, and defense points
+- **Per-node structural profiles**: clicking a node shows gauge-bar metrics (gradient sensitivity, Lipschitz estimate, perturbation amplification, shadowlogic capacity, extraction leakage)
+- **Collapsible side panel**: all sections (Flow, Navigation, ShadowLogic, Patterns, Motifs & Chains) collapse independently
 - **Drag-and-drop**: drop a `scene.json` file onto the viewer to load it
 - **Counterfactual editing**: right-click a node to remove it; the server re-analyzes and the view updates live
 
