@@ -55,8 +55,9 @@ function init() {
   controls.dampingFactor = 0.12;
   controls.rotateSpeed = 0.5;
   controls.panSpeed = 0.7;
-  controls.minDistance = 5;
-  controls.maxDistance = 2000;
+  controls.minDistance = 1;
+  controls.maxDistance = 5000;
+  controls.enableZoom = false;
 
   const ambient = new THREE.AmbientLight(0x334466, 1.0);
   threeScene.add(ambient);
@@ -74,9 +75,9 @@ function init() {
 
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.8,
-    0.4,
-    0.85,
+    0.35,
+    0.3,
+    0.92,
   );
   composer.addPass(bloomPass);
 
@@ -102,6 +103,7 @@ function init() {
   });
   buildLegend();
   renderer.domElement.addEventListener('contextmenu', onRightClick);
+  renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
 
   window.addEventListener('keydown', (e) => {
     if ((e.target as HTMLElement).tagName === 'INPUT') return;
@@ -154,6 +156,17 @@ function onResize() {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function onWheel(event: WheelEvent) {
+  event.preventDefault();
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  const speed = Math.max(2, camera.position.distanceTo(controls.target) * 0.1);
+  const move = forward.multiplyScalar(event.deltaY > 0 ? -speed : speed);
+  camera.position.add(move);
+  controls.target.add(move);
+  controls.update();
 }
 
 function onMouseMove(event: MouseEvent) {
