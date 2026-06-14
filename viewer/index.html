@@ -4,84 +4,221 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GraphSurgeon 3D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Spectral:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #04060a;
+      --line: rgba(140,196,255,.22);
+      --line2: rgba(140,196,255,.10);
+      --ink: #c9d6e4;
+      --sub: #9fb8cc;
+      --dim: #5e7186;
+      --faint: #36475c;
+      --cyan: #7fd4ff;
+      --amber: #ffb454;
+      --red: #ff5359;
+      --green: #69e2b0;
+      --mono: 'IBM Plex Mono', ui-monospace, monospace;
+      --disp: 'Michroma', var(--mono);
+      --serif: 'Spectral', Georgia, serif;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
-    #app { width: 100%; height: 100%; position: relative; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--mono); color: var(--ink); font-variant-numeric: tabular-nums;
+      background: var(--bg);
+    }
     canvas { display: block; }
 
-    #hud {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      color: #0ff;
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-      pointer-events: none;
-      text-shadow: 0 0 8px #0ff;
-      z-index: 10;
-    }
-    #hud h1 {
-      font-size: 18px;
-      margin-bottom: 4px;
-      color: #fff;
-      text-shadow: 0 0 12px #0ff;
+    #app { width: 100%; height: 100%; position: relative; }
+
+    #vignette {
+      position: fixed; inset: 0; pointer-events: none; z-index: 2;
+      background: radial-gradient(ellipse at 50% 48%, transparent 55%, rgba(0,0,5,.55) 100%);
     }
 
+    /* ---------- HUD (inside side-panel) ---------- */
+    #hud {
+      margin-bottom: 16px;
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: .1em;
+    }
+    #hud h1 {
+      font-family: var(--disp);
+      font-weight: 400;
+      font-size: 14px;
+      letter-spacing: .36em;
+      color: #e8f2fc;
+      margin-bottom: 6px;
+    }
+    #hud-model-name {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .14em;
+      color: var(--sub);
+      font-weight: 400;
+    }
+    #hud-info {
+      font-size: 10px;
+      color: var(--sub);
+      letter-spacing: .12em;
+      line-height: 1.8;
+    }
+
+    /* ---------- detail panel ---------- */
     #detail-panel {
       position: absolute;
-      top: 16px;
-      right: 16px;
-      width: 380px;
-      max-height: calc(100vh - 32px);
+      top: 0;
+      right: 0;
+      width: 392px;
+      height: 100%;
       overflow-x: hidden;
       overflow-y: auto;
       word-wrap: break-word;
       overflow-wrap: break-word;
-      background: rgba(0, 0, 0, 0.85);
-      border: 1px solid #0ff;
-      border-radius: 4px;
-      color: #ddd;
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-      padding: 12px;
+      background: linear-gradient(270deg, rgba(3,5,9,.92), rgba(3,5,9,.78));
+      border-left: 1px solid var(--line2);
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 86px 26px 40px;
       display: none;
-      z-index: 10;
-      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+      z-index: 15;
+      letter-spacing: .06em;
     }
+    #detail-panel::-webkit-scrollbar { width: 3px; }
+    #detail-panel::-webkit-scrollbar-thumb { background: var(--faint); }
     #detail-panel h2 {
-      color: #0ff;
-      font-size: 14px;
+      font-family: var(--disp);
+      font-weight: 400;
+      font-size: 13px;
+      letter-spacing: .1em;
+      color: #eef5fc;
       margin-bottom: 8px;
-      text-shadow: 0 0 6px #0ff;
     }
     #detail-panel .field {
-      margin-bottom: 4px;
+      margin-bottom: 5px;
+      font-size: 10.5px;
+      line-height: 1.7;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--line2);
     }
     #detail-panel .label {
-      color: #ccc;
+      color: var(--sub);
+      font-size: 9px;
+      letter-spacing: .18em;
     }
     #detail-panel .value {
-      color: #fff;
+      color: #e6eef7;
+      font-weight: 500;
     }
     #detail-panel .close-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      color: #f60;
+      position: fixed;
+      top: 18px;
+      right: 22px;
+      color: var(--amber);
       cursor: pointer;
       pointer-events: all;
-      font-size: 16px;
-      text-shadow: 0 0 6px #f60;
+      font-size: 18px;
+      z-index: 16;
+      transition: .18s;
+    }
+    #detail-panel .close-btn:hover { color: var(--red); }
+
+    /* ---------- side panel ---------- */
+    #side-panel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 280px;
+      z-index: 15;
+      padding: 24px 18px 30px;
+      background: linear-gradient(90deg, rgba(3,5,9,.92), rgba(3,5,9,.78));
+      border-right: 1px solid var(--line2);
+      overflow-y: auto;
+      overflow-x: hidden;
+      transform: translateX(0);
+      transition: transform .45s cubic-bezier(.6,0,.3,1);
+    }
+    #side-panel.hidden { transform: translateX(-100%); }
+    #side-panel::-webkit-scrollbar { width: 3px; }
+    #side-panel::-webkit-scrollbar-thumb { background: var(--faint); }
+
+    #side-tab {
+      position: fixed;
+      top: 50%;
+      left: 280px;
+      transform: translateY(-50%);
+      z-index: 16;
+      writing-mode: vertical-rl;
+      font-family: var(--mono);
+      font-size: 8.5px;
+      letter-spacing: .3em;
+      color: var(--sub);
+      background: rgba(3,5,9,.8);
+      border: 1px solid var(--line2);
+      border-left: none;
+      padding: 14px 6px;
+      cursor: pointer;
+      transition: left .45s cubic-bezier(.6,0,.3,1), color .18s;
+    }
+    #side-tab:hover { color: var(--cyan); }
+    #side-panel.hidden ~ #side-tab { left: 0; }
+
+    /* ---------- chrome buttons ---------- */
+    .chromebtn {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      letter-spacing: .22em;
+      color: var(--ink);
+      background: rgba(4,8,14,.55);
+      border: 1px solid var(--line2);
+      padding: 7px 12px;
+      cursor: pointer;
+      transition: .18s;
+      width: 100%;
+      text-align: center;
+    }
+    .chromebtn:hover { color: var(--cyan); border-color: var(--line); }
+    .chromebtn.active { color: var(--cyan); border-color: var(--line); }
+    .chromebtn.accent { color: var(--amber); border-color: rgba(255,180,84,.4); }
+    .chromebtn.accent:hover { color: var(--amber); border-color: rgba(255,180,84,.6); background: rgba(255,180,84,.06); }
+    .chromebtn.danger { color: var(--red); border-color: rgba(255,83,89,.35); }
+    .chromebtn.danger:hover { border-color: rgba(255,83,89,.5); }
+
+    /* ---------- section headers ---------- */
+    .section-head {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .34em;
+      color: var(--amber);
+      margin: 18px 0 8px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .section-head::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--line2);
     }
 
+    /* ---------- legend ---------- */
     #legend {
       position: absolute;
       bottom: 16px;
       left: 16px;
-      color: #ddd;
-      font-family: 'Courier New', monospace;
-      font-size: 11px;
+      color: var(--sub);
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .14em;
       z-index: 10;
       pointer-events: none;
     }
@@ -91,41 +228,45 @@
       margin-bottom: 3px;
     }
     #legend .swatch {
-      width: 10px;
-      height: 10px;
-      border-radius: 2px;
+      width: 8px;
+      height: 8px;
       margin-right: 6px;
       display: inline-block;
     }
 
+    /* ---------- drop overlay ---------- */
     #drop-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 255, 255, 0.1);
-      border: 3px dashed #0ff;
+      background: rgba(127,212,255,.06);
+      border: 2px dashed var(--cyan);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 100;
-      color: #0ff;
-      font-family: 'Courier New', monospace;
-      font-size: 24px;
-      text-shadow: 0 0 20px #0ff;
+      color: var(--cyan);
+      font-family: var(--disp);
+      font-size: 16px;
+      letter-spacing: .3em;
     }
   </style>
 </head>
 <body>
   <div id="app">
-    <div id="hud">
-      <h1>GRAPHSURGEON 3D <span id="hud-model-name" style="color:#0ff;font-size:14px;font-weight:normal;text-shadow:0 0 6px #0ff"></span></h1>
-      <div id="hud-info"></div>
+    <div id="vignette"></div>
+    <div id="side-panel">
+      <div id="hud">
+        <h1>GRAPHSURGEON <span id="hud-model-name"></span></h1>
+        <div id="hud-info"></div>
+      </div>
     </div>
+    <div id="side-tab">CONTROLS</div>
     <div id="detail-panel">
       <span class="close-btn" id="close-detail">&times;</span>
       <div id="detail-content"></div>
     </div>
     <div id="legend"></div>
-    <div id="drop-overlay">Drop scene.json here</div>
+    <div id="drop-overlay">DROP SCENE.JSON</div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>

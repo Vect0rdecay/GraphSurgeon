@@ -14,7 +14,8 @@ import { initEditMode, showContextMenu, hideContextMenu } from './edit-mode';
 import { initSearch, updateSearchResults, pulseNode } from './search';
 import { updateLabelLOD } from './lod';
 import { buildShadowLogicPanel, showShadowLogicDetail } from './shadowlogic';
-import { buildPatternsPanel, clearPatternHighlight } from './patterns';
+import { buildPatternsPanel } from './patterns';
+import { createSpaceBgTexture } from './space-bg';
 
 let renderer: THREE.WebGLRenderer;
 let threeScene: THREE.Scene;
@@ -45,8 +46,8 @@ function init() {
   container.appendChild(renderer.domElement);
 
   threeScene = new THREE.Scene();
-  threeScene.background = new THREE.Color(0x000000);
-  threeScene.fog = new THREE.FogExp2(0x000000, 0.002);
+  threeScene.background = createSpaceBgTexture();
+  threeScene.fog = new THREE.FogExp2(0x04060a, 0.002);
 
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
   camera.position.set(0, 5, 30);
@@ -63,11 +64,11 @@ function init() {
   const ambient = new THREE.AmbientLight(0x334466, 1.0);
   threeScene.add(ambient);
 
-  const dir1 = new THREE.DirectionalLight(0x00ffff, 1.5);
+  const dir1 = new THREE.DirectionalLight(0x7fd4ff, 1.5);
   dir1.position.set(1, 1, 1);
   threeScene.add(dir1);
 
-  const dir2 = new THREE.DirectionalLight(0xff6633, 1.0);
+  const dir2 = new THREE.DirectionalLight(0xffb454, 0.8);
   dir2.position.set(-1, -1, -1);
   threeScene.add(dir2);
 
@@ -76,8 +77,8 @@ function init() {
 
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.35,
     0.3,
+    0.4,
     0.92,
   );
   composer.addPass(bloomPass);
@@ -100,6 +101,7 @@ function init() {
     if (builtScene) pulseNode(nodeId, builtScene, camera, controls);
   });
   buildLegend();
+  setupSideTab();
   renderer.domElement.addEventListener('contextmenu', onRightClick);
   renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
 
@@ -111,6 +113,7 @@ function init() {
     keysDown.delete(e.key.toLowerCase());
   });
 
+  addGlobalStyles();
   animate();
 }
 
@@ -201,7 +204,6 @@ function onClick(_event: MouseEvent) {
 
   raycaster.setFromCamera(mouse, camera);
 
-  // Check shadowlogic hit meshes
   if (builtScene.shadowlogicMarkers && builtScene.shadowlogicMarkers.group.visible) {
     const slHits = builtScene.shadowlogicMarkers.hitMeshes;
     const slIntersects = raycaster.intersectObjects(slHits);
@@ -216,7 +218,6 @@ function onClick(_event: MouseEvent) {
     }
   }
 
-  // Check motif region hit meshes (only visible groups)
   const visibleHits = builtScene.motifRegions.hitMeshes.filter(m => m.parent?.visible);
   if (visibleHits.length > 0 && sceneData) {
     const motifIntersects = raycaster.intersectObjects(visibleHits);
@@ -256,63 +257,65 @@ function showDetail(node: SceneNode) {
   const content = document.getElementById('detail-content')!;
 
   const attrs = Object.entries(node.attributes)
-    .map(([k, v]) => `<div class="field"><span class="label">${k}:</span> <span class="value" style="word-break:break-all">${JSON.stringify(v)}</span></div>`)
+    .map(([k, v]) => `<div class="field"><span class="label">${k}</span> <span class="value" style="word-break:break-all">${JSON.stringify(v)}</span></div>`)
     .join('');
 
   const motifs = node.motif_ids.length > 0
-    ? `<div class="field"><span class="label">motifs:</span> <span class="value">${node.motif_ids.join(', ')}</span></div>`
+    ? `<div class="field"><span class="label">MOTIFS</span> <span class="value">${node.motif_ids.join(', ')}</span></div>`
     : '';
 
   const gadgets = node.gadget_ids.length > 0
-    ? `<div class="field"><span class="label">gadgets:</span> <span class="value">${node.gadget_ids.join(', ')}</span></div>`
+    ? `<div class="field"><span class="label">GADGETS</span> <span class="value">${node.gadget_ids.join(', ')}</span></div>`
     : '';
 
   const profileRows: string[] = [];
   const pRow = (label: string, val: number, desc: string, color: string) => {
     const barPct = Math.min(val / 10, 1) * 100;
-    return `<div style="margin-bottom:6px">
+    return `<div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="color:${color};font-weight:bold;font-size:11px">${label}</span>
-        <span style="color:#fff;font-size:12px">${val.toFixed(2)}</span>
+        <span style="font-size:8.5px;letter-spacing:.2em;color:var(--sub)">${label}</span>
+        <span style="color:#e8f0f8;font-size:11px;letter-spacing:.08em">${val.toFixed(2)}</span>
       </div>
-      <div style="background:rgba(255,255,255,0.06);height:4px;border-radius:2px;margin:3px 0">
-        <div style="background:${color};height:100%;width:${barPct}%;border-radius:2px"></div>
+      <div style="height:3px;background:var(--line2);position:relative;margin:4px 0">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:${barPct}%;background:${color};opacity:.85"></div>
       </div>
-      <div style="color:#aaa;font-size:9px">${desc}</div>
+      <div style="font-family:var(--serif);font-size:10px;color:var(--sub);font-style:italic">${desc}</div>
     </div>`;
   };
   if (node.gradient_sensitivity > 0)
-    profileRows.push(pRow('Gradient Sensitivity', node.gradient_sensitivity,
-      'How much this node amplifies gradient signals during backpropagation', '#0ff'));
+    profileRows.push(pRow('GRADIENT SENSITIVITY', node.gradient_sensitivity,
+      'How much this node amplifies gradient signals during backpropagation', 'var(--cyan)'));
   if (node.lipschitz_estimate > 1)
-    profileRows.push(pRow('Lipschitz Estimate', node.lipschitz_estimate,
-      'Upper bound on output change per unit input change — higher means less stable', '#ff6600'));
+    profileRows.push(pRow('LIPSCHITZ ESTIMATE', node.lipschitz_estimate,
+      'Upper bound on output change per unit input change — higher means less stable', 'var(--amber)'));
   if (node.perturbation_amplification > 1)
-    profileRows.push(pRow('Perturbation Amplification', node.perturbation_amplification,
-      'Factor by which small input perturbations grow passing through this node', '#ff3300'));
+    profileRows.push(pRow('PERTURBATION AMP', node.perturbation_amplification,
+      'Factor by which small input perturbations grow passing through this node', 'var(--red)'));
   if (node.shadowlogic_capacity > 0)
-    profileRows.push(pRow('ShadowLogic Capacity', node.shadowlogic_capacity,
-      'Spare parameter capacity that could conceal injected logic', '#ff6600'));
+    profileRows.push(pRow('SHADOWLOGIC CAPACITY', node.shadowlogic_capacity,
+      'Spare parameter capacity that could conceal injected logic', 'var(--amber)'));
   if (node.extraction_leakage > 0)
-    profileRows.push(pRow('Extraction Leakage', node.extraction_leakage,
-      'How much internal representation this node exposes to output observers', '#00ff41'));
+    profileRows.push(pRow('EXTRACTION LEAKAGE', node.extraction_leakage,
+      'How much internal representation this node exposes to output observers', 'var(--green)'));
+
   const profileSection = profileRows.length > 0
-    ? `<h2 style="margin-top:10px;color:#ff6600;border-top:1px solid rgba(255,102,0,0.3);padding-top:8px">Structural Profile</h2>${profileRows.join('')}`
+    ? `<div class="section-head" style="margin-top:14px">STRUCTURAL PROFILE</div>${profileRows.join('')}`
     : '';
 
   content.innerHTML = `
-    <h2>${node.op_type}: ${node.id}</h2>
-    <div class="field"><span class="label">category:</span> <span class="value">${node.category}</span></div>
-    <div class="field"><span class="label">depth:</span> <span class="value">${node.depth}</span></div>
-    <div class="field"><span class="label">position:</span> <span class="value">${node.position}</span></div>
-    <div class="field"><span class="label">exec_index:</span> <span class="value">${node.exec_index}</span></div>
-    <div class="field"><span class="label">inputs:</span> <span class="value" style="word-break:break-all">${node.inputs.join(', ')}</span></div>
-    <div class="field"><span class="label">outputs:</span> <span class="value" style="word-break:break-all">${node.outputs.join(', ')}</span></div>
-    ${node.param_count > 0 ? `<div class="field"><span class="label">params:</span> <span class="value">${node.param_count.toLocaleString()}</span></div>` : ''}
+    <div style="font-size:10px;letter-spacing:.26em;color:var(--cyan)">${node.category.toUpperCase()}</div>
+    <h2>${node.op_type}</h2>
+    <div style="font-size:9.5px;letter-spacing:.16em;color:var(--sub);margin-bottom:14px">${node.id}</div>
+    <div class="field"><span class="label">DEPTH</span> <span class="value">${node.depth}</span></div>
+    <div class="field"><span class="label">POSITION</span> <span class="value">${node.position}</span></div>
+    <div class="field"><span class="label">EXEC INDEX</span> <span class="value">${node.exec_index}</span></div>
+    <div class="field"><span class="label">INPUTS</span> <span class="value" style="word-break:break-all">${node.inputs.join(', ')}</span></div>
+    <div class="field"><span class="label">OUTPUTS</span> <span class="value" style="word-break:break-all">${node.outputs.join(', ')}</span></div>
+    ${node.param_count > 0 ? `<div class="field"><span class="label">PARAMS</span> <span class="value">${node.param_count.toLocaleString()}</span></div>` : ''}
     ${motifs}
     ${gadgets}
     ${profileSection}
-    ${attrs ? `<h2 style="margin-top:8px">Attributes</h2>${attrs}` : ''}
+    ${attrs ? `<div class="section-head" style="margin-top:14px">ATTRIBUTES</div>${attrs}` : ''}
   `;
 
   panel.style.display = 'block';
@@ -338,7 +341,7 @@ function buildLegend() {
     .join('');
 
   legend.innerHTML = `
-    <div id="legend-toggle" style="cursor:pointer;pointer-events:all;color:#0ff;font-size:11px;text-shadow:0 0 6px #0ff;margin-bottom:4px;user-select:none">▼ NODE TYPES</div>
+    <div id="legend-toggle" style="cursor:pointer;pointer-events:all;color:var(--sub);font-size:9px;letter-spacing:.22em;margin-bottom:4px;user-select:none">▼ NODE TYPES</div>
     <div id="legend-entries">${entries}</div>
   `;
 
@@ -348,6 +351,14 @@ function buildLegend() {
     const collapsed = entriesDiv.style.display === 'none';
     entriesDiv.style.display = collapsed ? '' : 'none';
     toggle.textContent = collapsed ? '▼ NODE TYPES' : '▶ NODE TYPES';
+  });
+}
+
+function setupSideTab() {
+  const tab = document.getElementById('side-tab')!;
+  const panel = document.getElementById('side-panel')!;
+  tab.addEventListener('click', () => {
+    panel.classList.toggle('hidden');
   });
 }
 
@@ -424,67 +435,40 @@ function loadScene(data: SceneGraph) {
 
   const hud = document.getElementById('hud-info')!;
   hud.innerHTML = `
-    ${data.model.name} | ${data.model.total_nodes} nodes | depth ${data.model.max_depth} | opset ${data.model.opset}
-    <div style="font-size:10px;color:#0aa;margin-top:2px">WASD fly | Q/E up/down | mouse orbit | scroll zoom<br>click node: details | motifs: click to highlight</div>
+    ${data.model.name} · ${data.model.total_nodes} nodes · depth ${data.model.max_depth} · opset ${data.model.opset}
+    <div style="font-size:9px;color:var(--sub);margin-top:4px;letter-spacing:.14em">WASD fly · Q/E up/down · mouse orbit · scroll zoom</div>
   `;
 
   initFlow(data);
-
   updateSearchResults(data);
   buildControlPanel(data);
   frameAll();
 }
 
 function buildControlPanel(data: SceneGraph) {
-  let panel = document.getElementById('control-panel');
-  if (panel) panel.remove();
+  const panel = document.getElementById('side-panel')!;
+  const hud = document.getElementById('hud')!;
+  panel.innerHTML = '';
+  panel.appendChild(hud);
 
-  panel = document.createElement('div');
-  panel.id = 'control-panel';
-  panel.style.cssText = `
-    position: absolute;
-    top: 80px;
-    left: 16px;
-    width: 220px;
-    max-height: calc(100vh - 280px);
-    overflow-y: auto;
-    color: #0ff;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    z-index: 10;
-  `;
+  // Flow controls
+  const flowHead = document.createElement('div');
+  flowHead.className = 'section-head';
+  flowHead.textContent = 'FLOW';
+  panel.appendChild(flowHead);
 
-  // Flow step-through controls
-  const flowBtnStyle = `
-    background: transparent;
-    border: 1px solid #0ff;
-    color: #0ff;
-    font-family: 'Courier New', monospace;
-    font-size: 11px;
-    padding: 5px 0;
-    cursor: pointer;
-    text-shadow: 0 0 6px #0ff;
-    flex: 1;
-  `;
-
-  const flowStartBtn = document.createElement('button');
-  flowStartBtn.textContent = 'WALK FLOW';
-  flowStartBtn.style.cssText = flowBtnStyle + 'width:100%;margin-bottom:4px;box-shadow:0 0 8px rgba(0,255,255,0.2);';
+  const flowStartBtn = makeBtn('WALK FLOW');
+  flowStartBtn.style.marginBottom = '4px';
 
   const flowNavRow = document.createElement('div');
-  flowNavRow.style.cssText = 'display:flex;gap:4px;margin-bottom:12px;display:none;';
+  flowNavRow.style.cssText = 'display:none;gap:4px;margin-bottom:12px;';
 
-  const prevBtn = document.createElement('button');
-  prevBtn.textContent = '◀ PREV';
-  prevBtn.style.cssText = flowBtnStyle;
-
-  const nextBtn = document.createElement('button');
-  nextBtn.textContent = 'NEXT ▶';
-  nextBtn.style.cssText = flowBtnStyle;
-
-  const exitBtn = document.createElement('button');
-  exitBtn.textContent = '✕';
-  exitBtn.style.cssText = flowBtnStyle.replace('#0ff', '#ff0066') + 'flex:0 0 32px;border-color:#ff0066;';
+  const prevBtn = makeBtn('◀ PREV');
+  prevBtn.style.flex = '1';
+  const nextBtn = makeBtn('NEXT ▶');
+  nextBtn.style.flex = '1';
+  const exitBtn = makeBtn('✕', 'danger');
+  exitBtn.style.cssText += 'flex:0 0 32px;';
 
   flowNavRow.appendChild(prevBtn);
   flowNavRow.appendChild(nextBtn);
@@ -512,66 +496,51 @@ function buildControlPanel(data: SceneGraph) {
     if (isFlowPlaying()) stepNext();
     if (!isFlowPlaying()) endFlow();
   });
-
   prevBtn.addEventListener('click', () => {
     if (isFlowPlaying()) stepPrev();
   });
-
   exitBtn.addEventListener('click', endFlow);
 
   panel.appendChild(flowStartBtn);
   panel.appendChild(flowNavRow);
 
-  // Flow description — show a clickable button that opens a full overlay
   if (data.model.flow_description) {
-    const flowDescBtn = document.createElement('button');
-    flowDescBtn.textContent = 'VIEW MODEL FLOW';
-    flowDescBtn.style.cssText = `
-      background: transparent;
-      border: 1px solid #0ff;
-      color: #0ff;
-      font-family: 'Courier New', monospace;
-      font-size: 11px;
-      padding: 4px 8px;
-      cursor: pointer;
-      width: 100%;
-      margin-bottom: 12px;
-      text-shadow: 0 0 4px #0ff;
-    `;
+    const flowDescBtn = makeBtn('VIEW MODEL FLOW');
+    flowDescBtn.style.marginBottom = '12px';
     flowDescBtn.addEventListener('click', () => {
       showFlowOverlay(data.model.flow_description!);
     });
     panel.appendChild(flowDescBtn);
   }
 
-  // Navigation buttons
+  // Navigation
+  const navHead = document.createElement('div');
+  navHead.className = 'section-head';
+  navHead.textContent = 'NAVIGATION';
+  panel.appendChild(navHead);
+
   const navRow = document.createElement('div');
   navRow.style.cssText = 'display:flex;gap:4px;margin-bottom:12px;';
 
-  const startBtn = document.createElement('button');
-  startBtn.textContent = 'GO TO START';
-  startBtn.style.cssText = `
-    flex:1;background:transparent;border:1px solid #0ff;color:#0ff;
-    font-family:'Courier New',monospace;font-size:10px;padding:4px;
-    cursor:pointer;text-shadow:0 0 4px #0ff;
-  `;
+  const startBtn = makeBtn('START');
+  startBtn.style.flex = '1';
   startBtn.addEventListener('click', () => flyToGraphEnd('start'));
   navRow.appendChild(startBtn);
 
-  const endBtn = document.createElement('button');
-  endBtn.textContent = 'GO TO END';
-  endBtn.style.cssText = `
-    flex:1;background:transparent;border:1px solid #ff6600;color:#ff6600;
-    font-family:'Courier New',monospace;font-size:10px;padding:4px;
-    cursor:pointer;text-shadow:0 0 4px #f60;
-  `;
+  const endBtn = makeBtn('END', 'accent');
+  endBtn.style.flex = '1';
   endBtn.addEventListener('click', () => flyToGraphEnd('end'));
   navRow.appendChild(endBtn);
 
   panel.appendChild(navRow);
 
-  // ShadowLogic panel
+  // ShadowLogic
   if (data.shadowlogic && data.shadowlogic.injection_points.length > 0 && builtScene) {
+    const slHead = document.createElement('div');
+    slHead.className = 'section-head';
+    slHead.textContent = 'SHADOWLOGIC';
+    panel.appendChild(slHead);
+
     const slPanel = buildShadowLogicPanel(data.shadowlogic, (nodeId) => {
       if (!builtScene) return;
       const mesh = builtScene.nodeObjects.get(nodeId);
@@ -585,14 +554,8 @@ function buildControlPanel(data: SceneGraph) {
     });
     panel.appendChild(slPanel);
 
-    const slToggleBtn = document.createElement('button');
-    slToggleBtn.textContent = 'SHOW INJECTION POINTS';
-    slToggleBtn.style.cssText = `
-      background:transparent;border:1px solid #ff6600;color:#ff6600;
-      font-family:'Courier New',monospace;font-size:10px;padding:4px 8px;
-      cursor:pointer;width:100%;margin-bottom:6px;
-      text-shadow:0 0 4px #f60;box-shadow:0 0 6px rgba(255,102,0,0.15);
-    `;
+    const slToggleBtn = makeBtn('SHOW INJECTION POINTS', 'accent');
+    slToggleBtn.style.marginBottom = '6px';
     slToggleBtn.addEventListener('click', () => {
       if (!builtScene?.shadowlogicMarkers) return;
       const g = builtScene.shadowlogicMarkers.group;
@@ -602,117 +565,43 @@ function buildControlPanel(data: SceneGraph) {
     panel.appendChild(slToggleBtn);
   }
 
-  // Structural patterns panel
+  // Structural Patterns
   if (data.structural_patterns && builtScene) {
+    const patHead = document.createElement('div');
+    patHead.className = 'section-head';
+    patHead.textContent = 'PATTERNS';
+    panel.appendChild(patHead);
+
     const patternsEl = buildPatternsPanel(data.structural_patterns, builtScene);
     panel.appendChild(patternsEl);
   }
 
-  // Show all regions toggle
+  // Motifs & Regions
   if (data.motifs.length > 0 || data.chains.length > 0) {
-    const regionBtn = document.createElement('button');
-    regionBtn.textContent = 'SHOW ALL REGIONS';
-    regionBtn.style.cssText = `
-      background:transparent;border:1px solid #ff6600;color:#ff6600;
-      font-family:'Courier New',monospace;font-size:10px;padding:4px 8px;
-      cursor:pointer;width:100%;margin-bottom:6px;
-      text-shadow:0 0 4px #f60;box-shadow:0 0 6px rgba(255,102,0,0.15);
-    `;
+    const motifHead = document.createElement('div');
+    motifHead.className = 'section-head';
+    motifHead.textContent = `MOTIFS & CHAINS (${data.motifs.length + data.chains.length})`;
+    panel.appendChild(motifHead);
+
+    const regionBtn = makeBtn('SHOW ALL REGIONS', 'accent');
+    regionBtn.style.marginBottom = '6px';
     regionBtn.addEventListener('click', () => {
       if (!builtScene) return;
       const showing = toggleAllRegions(builtScene.motifRegions);
       regionBtn.textContent = showing ? 'HIDE ALL REGIONS' : 'SHOW ALL REGIONS';
     });
     panel.appendChild(regionBtn);
-  }
 
-  // Motifs section — collapsible header
-  if (data.motifs.length > 0 || data.chains.length > 0) {
-    const motifToggle = document.createElement('button');
-    motifToggle.innerHTML = `<span style="color:#ff6600;text-shadow:0 0 6px #f60">MOTIFS & CHAINS (${data.motifs.length + data.chains.length})</span> <span id="motif-arrow" style="color:#ff6600">&#9660;</span>`;
-    motifToggle.style.cssText = `
-      background: transparent;
-      border: 1px solid #ff6600;
-      font-family: 'Courier New', monospace;
-      font-size: 11px;
-      padding: 4px 8px;
-      cursor: pointer;
-      width: 100%;
-      margin-bottom: 4px;
-      text-align: left;
-      box-shadow: 0 0 6px rgba(255,102,0,0.15);
-    `;
-
-    const motifBody = document.createElement('div');
-    motifBody.id = 'motif-body';
-    motifBody.style.cssText = 'display:none;';
-
-    motifToggle.addEventListener('click', () => {
-      const open = motifBody.style.display !== 'none';
-      motifBody.style.display = open ? 'none' : 'block';
-      motifToggle.querySelector('#motif-arrow')!.innerHTML = open ? '&#9660;' : '&#9650;';
-    });
-
-    panel.appendChild(motifToggle);
-
-    const clearBtn = document.createElement('button');
-    clearBtn.textContent = 'CLEAR HIGHLIGHT';
-    clearBtn.style.cssText = `
-      background: transparent;
-      border: 1px solid #555;
-      color: #ccc;
-      font-family: 'Courier New', monospace;
-      font-size: 11px;
-      padding: 3px 8px;
-      cursor: pointer;
-      width: 100%;
-      margin-bottom: 6px;
-    `;
+    const clearBtn = makeBtn('CLEAR HIGHLIGHT');
+    clearBtn.style.marginBottom = '6px';
     clearBtn.addEventListener('click', () => {
       if (builtScene) clearHighlight(builtScene);
       closeCatalog();
     });
-    motifBody.appendChild(clearBtn);
+    panel.appendChild(clearBtn);
 
     const motifList = buildMotifList(data);
-    motifList.style.cssText = `
-      max-height: 150px;
-      overflow-y: auto;
-    `;
-    motifBody.appendChild(motifList);
-    panel.appendChild(motifBody);
-
-    const style = document.createElement('style');
-    style.textContent = `
-      .motif-entry {
-        padding: 4px 6px;
-        cursor: pointer;
-        border-left: 2px solid transparent;
-        margin-bottom: 2px;
-        transition: all 0.15s;
-        display: flex;
-        align-items: center;
-      }
-      .motif-entry:hover {
-        border-left-color: #0ff;
-        background: rgba(0, 255, 255, 0.05);
-      }
-      .motif-title {
-        color: #ddd;
-        margin-left: 4px;
-      }
-      .motif-entry:hover .motif-title {
-        color: #fff;
-      }
-      .motif-info-btn {
-        opacity: 0.4;
-        transition: opacity 0.15s;
-      }
-      .motif-entry:hover .motif-info-btn {
-        opacity: 1;
-      }
-    `;
-    document.head.appendChild(style);
+    panel.appendChild(motifList);
 
     motifList.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
@@ -724,8 +613,13 @@ function buildControlPanel(data: SceneGraph) {
       showCatalogEntry(motifId, sceneData);
     });
   }
+}
 
-  document.getElementById('app')!.appendChild(panel);
+function makeBtn(text: string, variant?: 'accent' | 'danger'): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.textContent = text;
+  btn.className = 'chromebtn' + (variant ? ` ${variant}` : '');
+  return btn;
 }
 
 function onRightClick(event: MouseEvent) {
@@ -805,44 +699,32 @@ function showFlowOverlay(text: string) {
   overlay.style.cssText = `
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.95);
+    background: rgba(3,5,9,.96);
     z-index: 1000;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 40px;
+    padding: 60px 40px;
     overflow-y: auto;
   `;
 
   const closeBtn = document.createElement('button');
   closeBtn.textContent = 'CLOSE';
-  closeBtn.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 30px;
-    background: transparent;
-    border: 1px solid #ff0066;
-    color: #ff0066;
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    padding: 6px 16px;
-    cursor: pointer;
-    z-index: 1001;
-    text-shadow: 0 0 6px #ff0066;
-  `;
+  closeBtn.className = 'chromebtn danger';
+  closeBtn.style.cssText += 'position:fixed;top:20px;right:30px;z-index:1001;width:auto;padding:7px 18px;';
   closeBtn.addEventListener('click', () => overlay!.remove());
 
   const content = document.createElement('pre');
   content.style.cssText = `
-    color: #0ff;
-    font-family: 'Courier New', monospace;
+    color: var(--ink);
+    font-family: var(--serif);
     font-size: 14px;
-    line-height: 1.6;
+    line-height: 1.7;
     max-width: 800px;
     width: 100%;
     white-space: pre-wrap;
     word-wrap: break-word;
-    text-shadow: 0 0 4px rgba(0, 255, 255, 0.3);
+    letter-spacing: .04em;
   `;
   content.textContent = text;
 
@@ -853,4 +735,40 @@ function showFlowOverlay(text: string) {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) overlay!.remove();
   });
+}
+
+function addGlobalStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .motif-entry {
+      padding: 5px 6px;
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      margin-bottom: 2px;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+    }
+    .motif-entry:hover {
+      border-left-color: var(--cyan);
+      background: rgba(127,212,255,.04);
+    }
+    .motif-title {
+      color: var(--ink);
+      margin-left: 4px;
+      font-size: 10px;
+      letter-spacing: .08em;
+    }
+    .motif-entry:hover .motif-title {
+      color: #eef5fc;
+    }
+    .motif-info-btn {
+      opacity: 0.4;
+      transition: opacity 0.15s;
+    }
+    .motif-entry:hover .motif-info-btn {
+      opacity: 1;
+    }
+  `;
+  document.head.appendChild(style);
 }

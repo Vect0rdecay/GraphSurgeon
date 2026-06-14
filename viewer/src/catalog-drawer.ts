@@ -4,17 +4,17 @@ let drawerEl: HTMLElement | null = null;
 let onNodeClick: ((nodeId: string) => void) | null = null;
 
 const SIG_COLORS: Record<string, string> = {
-  EXCEPTIONAL: '#ff0033',
-  PRIMARY: '#ff6600',
-  SECONDARY: '#00ffff',
-  TERTIARY: '#00ff41',
-  MITIGATING: '#66ffcc',
+  EXCEPTIONAL: '#ff5359',
+  PRIMARY: '#ffb454',
+  SECONDARY: '#7fd4ff',
+  TERTIARY: '#69e2b0',
+  MITIGATING: '#69e2b0',
 };
 
 const CONF_COLORS: Record<string, string> = {
-  HIGH: '#00ff41',
-  MEDIUM: '#ffcc00',
-  LOW: '#ff4444',
+  HIGH: '#69e2b0',
+  MEDIUM: '#ffb454',
+  LOW: '#ff5359',
 };
 
 export function initCatalogDrawer(nodeClickHandler?: (nodeId: string) => void) {
@@ -24,24 +24,24 @@ export function initCatalogDrawer(nodeClickHandler?: (nodeId: string) => void) {
   drawerEl.innerHTML = '';
   drawerEl.style.cssText = `
     position: absolute;
-    bottom: 16px;
-    right: 16px;
-    width: 400px;
-    max-height: 60vh;
+    bottom: 0;
+    right: 0;
+    width: 392px;
+    max-height: 50vh;
     overflow-x: hidden;
     overflow-y: auto;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    background: rgba(0, 0, 0, 0.93);
-    border: 1px solid #ff6600;
-    border-radius: 4px;
-    color: #ddd;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    padding: 14px;
+    background: linear-gradient(270deg, rgba(3,5,9,.94), rgba(3,5,9,.82));
+    border-left: 1px solid rgba(140,196,255,.10);
+    border-top: 1px solid rgba(140,196,255,.10);
+    color: #c9d6e4;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px;
+    padding: 18px 26px;
     display: none;
     z-index: 10;
-    box-shadow: 0 0 24px rgba(255, 0, 255, 0.25);
+    letter-spacing: .06em;
   `;
   document.getElementById('app')!.appendChild(drawerEl);
 }
@@ -77,16 +77,16 @@ async function fetchAndEnrich(catalogId: string) {
       const extra = document.createElement('div');
       extra.style.cssText = 'margin-top:10px;border-top:1px solid #333;padding-top:8px';
       if (data.description) {
-        extra.innerHTML += `<div style="color:#ccc;margin-bottom:8px;line-height:1.4">${data.description}</div>`;
+        extra.innerHTML += `<div style="color:#c9d6e4;margin-bottom:8px;line-height:1.4">${data.description}</div>`;
       }
       if (data.attacks_enabled?.length) {
         const chips = data.attacks_enabled.map((a: string) =>
-          `<span style="color:#ff0066;border:1px solid #660033;padding:1px 5px;border-radius:3px;font-size:10px;display:inline-block;margin:1px">${a.replace(/_/g, ' ')}</span>`
+          `<span style="color:#ff5359;border:1px solid rgba(255,83,89,.35);padding:1px 5px;border-radius:3px;font-size:10px;display:inline-block;margin:1px">${a.replace(/_/g, ' ')}</span>`
         ).join('');
-        extra.innerHTML += `<div style="margin-bottom:8px"><div style="color:#ff0066;font-size:11px;margin-bottom:4px">ATTACKS ENABLED</div><div style="display:flex;flex-wrap:wrap;gap:2px">${chips}</div></div>`;
+        extra.innerHTML += `<div style="margin-bottom:8px"><div style="color:#ff5359;font-size:11px;margin-bottom:4px">ATTACKS ENABLED</div><div style="display:flex;flex-wrap:wrap;gap:2px">${chips}</div></div>`;
       }
       if (data.detection_logic) {
-        extra.innerHTML += `<details style="margin-bottom:8px"><summary style="color:#0ff;cursor:pointer;font-size:11px">DETECTION LOGIC</summary><div style="color:#ccc;margin-top:4px;font-size:11px;line-height:1.4;padding-left:8px;border-left:2px solid #066">${data.detection_logic}</div></details>`;
+        extra.innerHTML += `<details style="margin-bottom:8px"><summary style="color:#7fd4ff;cursor:pointer;font-size:11px">DETECTION LOGIC</summary><div style="color:#c9d6e4;margin-top:4px;font-size:11px;line-height:1.4;padding-left:8px;border-left:2px solid rgba(127,212,255,.22)">${data.detection_logic}</div></details>`;
       }
       if (extra.innerHTML) drawerEl.appendChild(extra);
     }
@@ -107,29 +107,29 @@ function showMotifDetail(m: SceneMotif) {
     badges.push(`<span style="color:${confColor};border:1px solid ${confColor};padding:1px 6px;border-radius:3px;font-size:10px">${m.confidence}</span>`);
   }
   if (m.category) {
-    badges.push(`<span style="color:#0aa;border:1px solid #066;padding:1px 6px;border-radius:3px;font-size:10px">${m.category}</span>`);
+    badges.push(`<span style="color:#9fb8cc;border:1px solid rgba(127,212,255,.22);padding:1px 6px;border-radius:3px;font-size:10px">${m.category}</span>`);
   }
 
   let html = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <h3 style="color:#ff6600;margin:0;text-shadow:0 0 8px #f60;font-size:14px">MOTIF</h3>
-      <span id="close-catalog" style="color:#f60;cursor:pointer;font-size:18px">&times;</span>
+      <h3 style="color:#ffb454;margin:0;font-size:14px">MOTIF</h3>
+      <span id="close-catalog" style="color:#ffb454;cursor:pointer;font-size:18px">&times;</span>
     </div>
     <div style="color:#fff;font-size:13px;margin-bottom:6px;text-shadow:0 0 4px rgba(255,255,255,0.3)">${m.title}</div>
     ${badges.length > 0 ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${badges.join('')}</div>` : ''}
   `;
 
   if (m.description) {
-    html += `<div style="color:#ccc;margin-bottom:10px;line-height:1.4">${m.description}</div>`;
+    html += `<div style="color:#c9d6e4;margin-bottom:10px;line-height:1.4">${m.description}</div>`;
   }
 
   if (m.attacks_enabled && m.attacks_enabled.length > 0) {
     const chips = m.attacks_enabled.map(a =>
-      `<span style="color:#ff0066;border:1px solid #660033;padding:1px 5px;border-radius:3px;font-size:10px;display:inline-block;margin:1px">${a.replace(/_/g, ' ')}</span>`
+      `<span style="color:#ff5359;border:1px solid rgba(255,83,89,.35);padding:1px 5px;border-radius:3px;font-size:10px;display:inline-block;margin:1px">${a.replace(/_/g, ' ')}</span>`
     ).join('');
     html += `
       <div style="margin-bottom:10px">
-        <div style="color:#ff0066;font-size:11px;margin-bottom:4px;text-shadow:0 0 4px #f06">ATTACKS ENABLED</div>
+        <div style="color:#ff5359;font-size:11px;margin-bottom:4px;text-shadow:0 0 4px #f06">ATTACKS ENABLED</div>
         <div style="display:flex;flex-wrap:wrap;gap:2px">${chips}</div>
       </div>
     `;
@@ -138,8 +138,8 @@ function showMotifDetail(m: SceneMotif) {
   if (m.detection_logic) {
     html += `
       <details style="margin-bottom:10px">
-        <summary style="color:#0ff;cursor:pointer;font-size:11px;text-shadow:0 0 4px #0ff">DETECTION LOGIC</summary>
-        <div style="color:#ccc;margin-top:4px;font-size:11px;line-height:1.4;padding-left:8px;border-left:2px solid #066">${m.detection_logic}</div>
+        <summary style="color:#7fd4ff;cursor:pointer;font-size:11px;text-shadow:0 0 4px #0ff">DETECTION LOGIC</summary>
+        <div style="color:#c9d6e4;margin-top:4px;font-size:11px;line-height:1.4;padding-left:8px;border-left:2px solid rgba(127,212,255,.22)">${m.detection_logic}</div>
       </details>
     `;
   }
@@ -175,24 +175,24 @@ function showChainDetail(c: SceneChain, scene: SceneGraph) {
 
   let html = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <h3 style="color:#ff6600;margin:0;text-shadow:0 0 8px #f60;font-size:14px">CHAIN</h3>
-      <span id="close-catalog" style="color:#f60;cursor:pointer;font-size:18px">&times;</span>
+      <h3 style="color:#ffb454;margin:0;font-size:14px">CHAIN</h3>
+      <span id="close-catalog" style="color:#ffb454;cursor:pointer;font-size:18px">&times;</span>
     </div>
     <div style="color:#fff;font-size:13px;margin-bottom:6px;text-shadow:0 0 4px rgba(255,255,255,0.3)">${title}</div>
     ${badges.length > 0 ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${badges.join('')}</div>` : ''}
   `;
 
   if (c.description) {
-    html += `<div style="color:#ccc;margin-bottom:10px;line-height:1.4">${c.description}</div>`;
+    html += `<div style="color:#c9d6e4;margin-bottom:10px;line-height:1.4">${c.description}</div>`;
   }
 
   if (gadgetNames.length > 0) {
     const chips = gadgetNames.map(g =>
-      `<span style="color:#ff6600;border:1px solid #663300;padding:1px 5px;border-radius:3px;font-size:10px;display:inline-block;margin:1px">${g}</span>`
+      `<span style="color:#ffb454;border:1px solid #663300;padding:1px 5px;border-radius:3px;font-size:10px;display:inline-block;margin:1px">${g}</span>`
     ).join('');
     html += `
       <div style="margin-bottom:10px">
-        <div style="color:#ff6600;font-size:11px;margin-bottom:4px;text-shadow:0 0 4px #f60">COMPONENT GADGETS</div>
+        <div style="color:#ffb454;font-size:11px;margin-bottom:4px;">COMPONENT GADGETS</div>
         <div style="display:flex;flex-wrap:wrap;gap:2px">${chips}</div>
       </div>
     `;
@@ -213,11 +213,11 @@ function showChainDetail(c: SceneChain, scene: SceneGraph) {
 
 function renderPapers(papers: PaperRef[]): string {
   const items = papers.map(p =>
-    `<div style="color:#0ff;font-size:11px;margin-bottom:2px;padding-left:8px;border-left:2px solid #066">${p.title} <span style="color:#066">(${p.slug})</span></div>`
+    `<div style="color:#7fd4ff;font-size:11px;margin-bottom:2px;padding-left:8px;border-left:2px solid rgba(127,212,255,.22)">${p.title} <span style="color:#7a8fa3">(${p.slug})</span></div>`
   ).join('');
   return `
     <div style="margin-bottom:10px">
-      <div style="color:#0ff;font-size:11px;margin-bottom:4px;text-shadow:0 0 4px #0ff">RESEARCH BASIS</div>
+      <div style="color:#7fd4ff;font-size:11px;margin-bottom:4px;text-shadow:0 0 4px #0ff">RESEARCH BASIS</div>
       ${items}
     </div>
   `;
@@ -225,13 +225,13 @@ function renderPapers(papers: PaperRef[]): string {
 
 function renderNodeLinks(nodeIds: string[]): string {
   const display = nodeIds.length > 8 ? nodeIds.slice(0, 8) : nodeIds;
-  const more = nodeIds.length > 8 ? `<span style="color:#066"> +${nodeIds.length - 8} more</span>` : '';
+  const more = nodeIds.length > 8 ? `<span style="color:#7a8fa3"> +${nodeIds.length - 8} more</span>` : '';
   const links = display.map(nid =>
-    `<span class="node-link" data-node-id="${nid}" style="color:#0ff;cursor:pointer;border-bottom:1px dotted #066;font-size:11px;margin-right:6px">${nid}</span>`
+    `<span class="node-link" data-node-id="${nid}" style="color:#7fd4ff;cursor:pointer;border-bottom:1px dotted rgba(127,212,255,.22);font-size:11px;margin-right:6px">${nid}</span>`
   ).join('');
   return `
     <div style="margin-bottom:6px">
-      <div style="color:#0aa;font-size:11px;margin-bottom:4px">NODES</div>
+      <div style="color:#9fb8cc;font-size:11px;margin-bottom:4px">NODES</div>
       <div>${links}${more}</div>
     </div>
   `;

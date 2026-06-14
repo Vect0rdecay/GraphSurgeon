@@ -104,7 +104,7 @@ function buildEdges(data: SceneGraph, positions: Map<string, NodePosition>): THR
 
     const geom = new THREE.BufferGeometry().setFromPoints(points);
     const mat = new THREE.LineBasicMaterial({
-      color: isSkip ? 0xff6600 : 0x0088aa,
+      color: isSkip ? 0xffb454 : 0x7fd4ff,
       transparent: true,
       opacity: isSkip ? 0.7 : 0.4,
       linewidth: lineWidth,
@@ -127,15 +127,15 @@ function makeLabel(node: SceneNode, color: number): THREE.Sprite {
   ctx.fillRect(0, 0, 256, 64);
 
   const hex = '#' + color.toString(16).padStart(6, '0');
-  ctx.font = 'bold 18px Courier New';
+  ctx.font = '600 16px IBM Plex Mono, monospace';
   ctx.fillStyle = hex;
   ctx.shadowColor = hex;
   ctx.shadowBlur = 2;
   ctx.textAlign = 'center';
   ctx.fillText(node.op_type, 128, 24);
 
-  ctx.font = '13px Courier New';
-  ctx.fillStyle = '#cccccc';
+  ctx.font = '12px IBM Plex Mono, monospace';
+  ctx.fillStyle = '#9fb8cc';
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
   ctx.fillText(node.id, 128, 46);

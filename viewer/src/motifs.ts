@@ -97,11 +97,11 @@ export function buildMotifGroups(scene: SceneGraph): MotifGroup[] {
 }
 
 const SIG_COLORS: Record<string, string> = {
-  EXCEPTIONAL: '#ff0033',
-  PRIMARY: '#ff6600',
-  SECONDARY: '#00ffff',
-  TERTIARY: '#00ff41',
-  MITIGATING: '#66ffcc',
+  EXCEPTIONAL: '#ff5359',
+  PRIMARY: '#ffb454',
+  SECONDARY: '#7fd4ff',
+  TERTIARY: '#69e2b0',
+  MITIGATING: '#69e2b0',
 };
 
 export function buildMotifList(scene: SceneGraph): HTMLElement {
@@ -122,13 +122,13 @@ export function buildMotifList(scene: SceneGraph): HTMLElement {
     row.dataset.allIds = JSON.stringify(group.ids);
 
     const badge = group.type === 'chain' ? '⛓' : '◆';
-    const badgeColor = group.type === 'chain' ? '#ff6600' : (SIG_COLORS[group.significance] || '#0ff');
-    const countLabel = group.count > 1 ? ` <span style="color:#0aa;font-size:10px">(${group.count})</span>` : '';
+    const badgeColor = group.type === 'chain' ? '#ffb454' : (SIG_COLORS[group.significance] || '#7fd4ff');
+    const countLabel = group.count > 1 ? ` <span style="color:#9fb8cc;font-size:9px">(${group.count})</span>` : '';
 
     row.innerHTML = `
       <span style="color:${badgeColor}">${badge}</span>
       <span class="motif-title" style="flex:1">${group.title}${countLabel}</span>
-      <span class="motif-info-btn" data-info-id="${group.ids[0]}" title="View details" style="color:#0ff;cursor:pointer;font-size:13px;padding:0 4px;opacity:0.6">ℹ</span>
+      <span class="motif-info-btn" data-info-id="${group.ids[0]}" title="View details" style="color:#7fd4ff;cursor:pointer;font-size:13px;padding:0 4px;opacity:0.6">ℹ</span>
     `;
     row.title = group.ids.join(', ');
     container.appendChild(row);

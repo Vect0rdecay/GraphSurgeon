@@ -5,10 +5,10 @@ import type { BuiltScene } from './scene-builder';
 export type PatternCategory = 'gradient_bottlenecks' | 'feature_fusion_points' | 'amplification_layers' | 'recommended_defense_points';
 
 const PATTERN_COLORS: Record<PatternCategory, number> = {
-  gradient_bottlenecks: 0xff3300,
-  feature_fusion_points: 0x00ffff,
-  amplification_layers: 0xff6600,
-  recommended_defense_points: 0x00ff41,
+  gradient_bottlenecks: 0xff5359,
+  feature_fusion_points: 0x7fd4ff,
+  amplification_layers: 0xffb454,
+  recommended_defense_points: 0x69e2b0,
 };
 
 const PATTERN_LABELS: Record<PatternCategory, string> = {
@@ -105,7 +105,7 @@ export function buildPatternsPanel(
   `;
   const total = data.gradient_bottlenecks.length + data.feature_fusion_points.length
     + data.amplification_layers.length + data.recommended_defense_points.length;
-  header.innerHTML = `<span style="color:#00ff41;font-weight:bold;font-size:11px">▸ STRUCTURAL PATTERNS (${total})</span>`;
+  header.innerHTML = `<span style="color:#9fb8cc;font-size:9px;letter-spacing:.22em">▸ PATTERNS (${total})</span>`;
 
   const body = document.createElement('div');
   body.style.display = 'none';
@@ -114,16 +114,16 @@ export function buildPatternsPanel(
   header.addEventListener('click', () => {
     expanded = !expanded;
     body.style.display = expanded ? 'block' : 'none';
-    header.innerHTML = `<span style="color:#00ff41;font-weight:bold;font-size:11px">${expanded ? '▾' : '▸'} STRUCTURAL PATTERNS (${total})</span>`;
+    header.innerHTML = `<span style="color:#9fb8cc;font-size:9px;letter-spacing:.22em">${expanded ? '▾' : '▸'} PATTERNS (${total})</span>`;
   });
 
   const statsRow = document.createElement('div');
-  statsRow.style.cssText = 'color:#ccc;font-size:10px;padding:4px 0;border-bottom:1px solid rgba(0,255,65,0.2);margin-bottom:6px;';
+  statsRow.style.cssText = 'color:#9fb8cc;font-size:9px;letter-spacing:.1em;padding:4px 0;border-bottom:1px solid rgba(140,196,255,.10);margin-bottom:6px;';
   statsRow.innerHTML = `
-    <span style="color:#00ff41">Fan-in:</span> ${data.max_fan_in}
-    <span style="color:#00ff41;margin-left:8px">Fan-out:</span> ${data.max_fan_out}
-    <span style="color:#00ff41;margin-left:8px">Chain:</span> ${data.longest_linear_chain}
-    <span style="color:#00ff41;margin-left:8px">Score:</span> ${data.structural_score.toFixed(2)}
+    <span style="color:#c9d6e4">Fan-in:</span> ${data.max_fan_in}
+    <span style="color:#c9d6e4;margin-left:8px">Fan-out:</span> ${data.max_fan_out}
+    <span style="color:#c9d6e4;margin-left:8px">Chain:</span> ${data.longest_linear_chain}
+    <span style="color:#c9d6e4;margin-left:8px">Score:</span> ${data.structural_score.toFixed(2)}
   `;
   body.appendChild(statsRow);
 
@@ -137,9 +137,9 @@ export function buildPatternsPanel(
     btn.textContent = `${PATTERN_LABELS[cat]} (${count})`;
     btn.dataset.category = cat;
     btn.style.cssText = `
-      background: rgba(0,0,0,0.4); border: 1px solid ${color}; color: ${color};
-      font-family: 'Courier New', monospace; font-size: 10px;
-      padding: 3px 6px; cursor: pointer; border-radius: 2px;
+      background: rgba(4,8,14,.55); border: 1px solid ${color}; color: ${color};
+      font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: .14em;
+      padding: 4px 8px; cursor: pointer; transition: .18s;
     `;
     btn.addEventListener('click', () => {
       if (activeCategory === cat) {

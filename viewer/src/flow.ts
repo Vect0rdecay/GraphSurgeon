@@ -175,28 +175,27 @@ function showPanel(level: DepthLevel, index: number) {
     panel.id = 'flow-depth-panel';
     panel.style.cssText = `
       position: absolute;
-      top: 16px;
-      right: 16px;
-      width: 340px;
-      max-height: calc(100vh - 32px);
+      top: 0;
+      right: 0;
+      width: 392px;
+      height: 100%;
       overflow-x: hidden;
       overflow-y: auto;
-      background: rgba(0, 0, 0, 0.93);
-      border: 1px solid #0ff;
-      border-radius: 4px;
-      padding: 14px;
-      color: #fff;
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
+      background: linear-gradient(270deg, rgba(3,5,9,.92), rgba(3,5,9,.78));
+      border-left: 1px solid rgba(140,196,255,.10);
+      padding: 86px 26px 40px;
+      color: #c9d6e4;
+      font-family: 'IBM Plex Mono', ui-monospace, monospace;
+      font-size: 11px;
       z-index: 20;
-      box-shadow: 0 0 24px rgba(0, 255, 255, 0.3);
       word-wrap: break-word;
       overflow-wrap: break-word;
+      letter-spacing: .06em;
     `;
     document.getElementById('app')!.appendChild(panel);
   }
 
-  const posColor = level.position === 'early' ? '#0ff' : level.position === 'late' ? '#ff6600' : '#0aa';
+  const posColor = level.position === 'early' ? '#7fd4ff' : level.position === 'late' ? '#ffb454' : '#9fb8cc';
 
   const opCounts = new Map<string, number>();
   for (const n of level.nodes) {
@@ -207,28 +206,28 @@ function showPanel(level: DepthLevel, index: number) {
     .join(', ');
 
   const branchLabel = level.nodes.length > 1
-    ? `<span style="color:#ff6600;font-size:10px;border:1px solid #ff6600;padding:0 4px;border-radius:2px;margin-left:6px">⑂ ${level.nodes.length} parallel</span>`
+    ? `<span style="color:#ffb454;font-size:8.5px;letter-spacing:.18em;border:1px solid rgba(255,180,84,.4);padding:2px 6px;margin-left:6px">⑂ ${level.nodes.length} PARALLEL</span>`
     : '';
 
   let html = `
     <div style="margin-bottom:8px">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
-          <span style="color:#0ff;font-size:11px;font-weight:bold">LEVEL ${index + 1} / ${depthLevels.length}</span>
-          <span style="color:${posColor};font-size:10px;margin-left:8px;border:1px solid ${posColor};padding:0 4px;border-radius:2px">${level.position.toUpperCase()}</span>
+          <span style="font-family:'Michroma',monospace;font-size:10px;letter-spacing:.22em;color:#eef5fc">LEVEL ${index + 1} / ${depthLevels.length}</span>
+          <span style="color:${posColor};font-size:8.5px;letter-spacing:.2em;margin-left:8px;border:1px solid ${posColor};padding:2px 6px">${level.position.toUpperCase()}</span>
           ${branchLabel}
         </div>
       </div>
-      <div style="color:#ccc;font-size:11px;margin-top:4px">${opSummary}</div>
+      <div style="color:#9fb8cc;font-size:9.5px;letter-spacing:.1em;margin-top:4px">${opSummary}</div>
     </div>
   `;
 
   html += '<div style="display:flex;flex-direction:column;gap:6px">';
   for (const node of level.nodes) {
     const catColor = '#' + getCategoryColor(node.category).toString(16).padStart(6, '0');
-    const params = node.param_count > 0 ? `<span style="color:#0aa;font-size:10px;margin-left:6px">${node.param_count.toLocaleString()} params</span>` : '';
+    const params = node.param_count > 0 ? `<span style="color:#9fb8cc;font-size:9px;letter-spacing:.1em;margin-left:6px">${node.param_count.toLocaleString()} params</span>` : '';
     const motifs = node.motif_ids.length > 0
-      ? `<div style="color:#ff6600;font-size:10px;margin-top:2px">⚠ ${node.motif_ids.join(', ')}</div>`
+      ? `<div style="color:#ffb454;font-size:9px;letter-spacing:.1em;margin-top:2px">⚠ ${node.motif_ids.join(', ')}</div>`
       : '';
 
     const inputList = node.inputs.length > 0
@@ -246,14 +245,14 @@ function showPanel(level: DepthLevel, index: number) {
         cursor: pointer;
         border-radius: 0 3px 3px 0;
         transition: background 0.15s;
-      " onmouseover="this.style.background='rgba(0,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+      " onmouseover="this.style.background='rgba(127,212,255,.04)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
         <div style="display:flex;align-items:center;gap:6px">
-          <span style="color:${catColor};font-weight:bold;font-size:13px">${node.op_type}</span>
-          <span style="color:#888;font-size:10px">${node.category}</span>
+          <span style="color:${catColor};font-weight:600;font-size:12px;letter-spacing:.08em">${node.op_type}</span>
+          <span style="color:#9fb8cc;font-size:9px;letter-spacing:.14em">${node.category}</span>
           ${params}
         </div>
-        <div style="color:#aaa;font-size:10px;margin-top:1px">${node.id}</div>
-        ${inputList || outputList ? `<div style="color:#666;font-size:9px;margin-top:2px">${inputList ? 'in: ' + inputList : ''}${inputList && outputList ? ' → ' : ''}${outputList ? 'out: ' + outputList : ''}</div>` : ''}
+        <div style="color:#9fb8cc;font-size:9px;letter-spacing:.08em;margin-top:2px">${node.id}</div>
+        ${inputList || outputList ? `<div style="color:#7a8fa3;font-size:8.5px;letter-spacing:.06em;margin-top:2px">${inputList ? 'in: ' + inputList : ''}${inputList && outputList ? ' → ' : ''}${outputList ? 'out: ' + outputList : ''}</div>` : ''}
         ${motifs}
       </div>
     `;
