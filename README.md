@@ -137,7 +137,7 @@ technique = motif_catalog.get_technique_by_id("AML-ADV-002")
 
 ### Counterfactual edits
 
-CLI parity: `remove_node` matches `edit remove-node`. All surgery methods mutate the loaded `ModelProto` in place and return a `SurgeryResult` (`success`, `message`, `nodes_removed`, `edges_rewired`, etc.).
+CLI parity: `remove_node` matches `edit remove-node`. All surgery methods mutate the loaded `ModelProto` in place and return a `SurgeryResult` (`success`, `graph`, `message`, `nodes_added`, `nodes_removed`, `nodes_modified`, `edges_rewired`).
 
 ```python
 from graph_surgeon import GraphSurgeon, GraphValidationLevel
@@ -211,7 +211,7 @@ cd viewer && npm install && ./node_modules/.bin/vite --port 5173
 | Scroll wheel | Zoom in/out |
 | Click node | Open node detail panel |
 | Right-click node | Counterfactual edit menu |
-| START / END | Fly to the beginning or end of the graph |
+| START / END (buttons) | Fly to the beginning or end of the graph |
 
 ### Motif and chain visualization
 
@@ -233,7 +233,7 @@ Use "SHOW ALL REGIONS" to light up every motif region at once for a full attack-
 
 The viewer adapts layout to graph shape:
 
-- **Wide graphs** (branching architectures like Inception): nodes spread horizontally at each depth, barycentric positioning
+- **Wide graphs** (branching architectures like Inception): nodes sorted by parent connectivity and spread horizontally at each depth
 - **Narrow graphs** (sequential models like ResNet): helical/spiral layout to prevent a single vertical line
 - **Parameter-only nodes** (Unsqueeze, Reshape ops that only consume initializers): repositioned next to their consumer nodes instead of cluttering depth 0
 
@@ -242,9 +242,9 @@ The viewer adapts layout to graph shape:
 - **Search**: type in the search bar to filter nodes by name or op type
 - **Flow walk**: "WALK FLOW" steps through execution order depth-by-depth with a detail panel showing each level's nodes
 - **Model flow description**: "VIEW MODEL FLOW" opens a full-screen readable narrative
-- **ShadowLogic overlay**: shows injection point markers on the 3D graph with fly-to navigation and per-point detail popups
+- **ShadowLogic overlay** (project-defined heuristic for identifying potential logic-injection sites): shows injection point markers on the 3D graph with fly-to navigation and per-point detail popups
 - **Structural patterns**: toggle highlights for gradient bottlenecks, fusion points, amplification layers, and defense points
-- **Per-node structural profiles**: clicking a node shows gauge-bar metrics (gradient sensitivity, Lipschitz estimate, perturbation amplification, shadowlogic capacity, extraction leakage)
+- **Per-node structural profiles**: clicking a node shows gauge-bar metrics for topology-derived structural proxies (gradient sensitivity, Lipschitz estimate, perturbation amplification, shadowlogic capacity, extraction leakage); these are heuristic estimates based on graph structure, not runtime-computed values
 - **Collapsible side panel**: all sections (Flow, Navigation, ShadowLogic, Patterns, Motifs & Chains) collapse independently
 - **Drag-and-drop**: drop a `scene.json` file onto the viewer to load it
 - **Counterfactual editing**: right-click a node to remove it; the server re-analyzes and the view updates live
