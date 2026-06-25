@@ -8,7 +8,7 @@ The tool is ONNX-only. It does not require PyTorch or a CUDA toolkit.
 
 | Command | Role |
 |---------|------|
-| `inspect` | Model summary: I/O tensors, initializer count, operator mix |
+| `inspect` | Model summary: I/O tensors, operator mix, and inferred architecture (hidden dim, vocab size, MLP size, RoPE theta, tied embeddings, max positions, conv groups, quantization) |
 | `topology` | Graph depth, early/middle/late layer buckets, execution order |
 | `patterns` | Coarse structural blocks (conv stacks, attention, normalization chains) |
 | `motifs` | Registry-backed structural motifs: which attack classes the graph topology makes architecturally plausible |
@@ -21,6 +21,40 @@ The tool is ONNX-only. It does not require PyTorch or a CUDA toolkit.
 | `serve` | Launch a live 3D visualization server with counterfactual editing |
 
 Motif hits describe attack landscape (what attack types the architecture enables), not confirmed exploitability. The tool does not assign risk scores or severity tiers.
+
+## Architecture inference
+
+`inspect` automatically infers model architecture parameters from the ONNX graph structure — no config files or model cards needed. It reports only fields it can determine; unknown fields are omitted.
+
+| Field | How it's inferred |
+|-------|-------------------|
+| Hidden dimension | Mode of 1D weight shapes across LayerNorm, RMSNorm, and SimplifiedLayerNormalization nodes |
+| Vocab size | First dimension of embedding weights (Gather/GatherBlockQuantized), cross-validated against LM head output |
+| MLP intermediate size | Output dimension of gate/up projection weights (larger than hidden dim, not vocab-sized) |
+| Max position embeddings | First dimension of cos_cache/sin_cache initializers or positional embedding tensors |
+| RoPE theta | Reverse-engineered from precomputed cos_cache tensor values; falls back to inv_freq tensors or RotaryEmbedding node attributes |
+| Tied embeddings | Detects shared initializers between embedding and LM head nodes (handles both direct sharing and quantized scale/zero-point sharing) |
+| Conv groups | Group attribute from Conv nodes (reported when > 1) |
+| Quantization format | Detected from MatMulNBits bit-width attributes or DequantizeLinear presence |
+
+Works across quantization formats (fp32, fp16, Q4, Q8) and model families (transformers, hybrid conv+attention, CNNs). When external weight data is unavailable, shape-based fields still resolve — only RoPE theta requires the actual tensor bytes.
+
+Example output:
+
+```
+Architecture:
+  Hidden dimension: 2048
+  Vocab size: 65536
+  MLP intermediate size: 8192
+  Max position embeddings: 128000
+  RoPE theta: 1000000
+  Tied embeddings: True
+  Tied initializers: ['model_embed_tokens_weight_scales', 'model_embed_tokens_weight_zp']
+  Conv groups: 2048
+  Quantization: Q4
+```
+
+Use `--json` for structured output suitable for scripting and cross-model comparison.
 
 ## Install
 
@@ -55,7 +89,8 @@ source .venv/bin/activate   # optional; then graph-surgeon works on PATH
 ```
 
 ```bash
-graph-surgeon inspect model.onnx
+graph-surgeon inspect model.onnx            # human-readable summary + architecture
+graph-surgeon inspect model.onnx --json     # full report as JSON
 graph-surgeon topology model.onnx
 graph-surgeon patterns model.onnx
 graph-surgeon motifs model.onnx -o report.json
@@ -162,6 +197,23 @@ print(diff["summary"], diff["nodes_removed"])
 `GraphValidationLevel.LOADABLE` and `.RUNNABLE` require `onnxruntime` (installed with `pip install -e ".[dev]"`). On a minimal install, validation falls back with warnings.
 
 Additional graph surgery primitives (`remove_subgraph`, `insert_node_before`, `insert_node_after`, `replace_node`, `modify_node_attribute`, `add_initializer`, `add_metadata`) are Python-only today. See [docs/PYTHON_API.md](docs/PYTHON_API.md) for the full `GraphSurgeon` reference.
+
+### Architecture inference
+
+```python
+from graph_surgeon.parsers.onnx_parser import ONNXGraphParser
+from graph_surgeon.analysis.architecture import infer_architecture
+
+parser = ONNXGraphParser()
+graph = parser.parse_file("model.onnx")
+arch = infer_architecture(graph)
+
+print(arch.hidden_dim)        # 2048
+print(arch.vocab_size)        # 65536
+print(arch.rope_theta)        # 1000000.0
+print(arch.tied_embeddings)   # True
+print(arch.to_dict())         # only non-None fields
+```
 
 ### Optional weight statistics
 
