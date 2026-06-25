@@ -2,6 +2,12 @@
 
 GraphSurgeon reverse-engineers ONNX computational graphs from the command line or Python. It summarizes inputs and operators, maps depth and execution order, detects structural motifs in the DAG, cross-references adversarial ML literature, narrates data flow, and supports counterfactual edits with validation and diff.
 
+### Recent updates
+
+- **Architecture inference** (June 2025) — `inspect` now infers hidden dimension, vocab size, MLP intermediate size, max position embeddings, RoPE theta, tied embeddings, conv groups, and quantization format directly from the ONNX graph. Use `--json` for structured output. See [Architecture inference](#architecture-inference).
+- **External data fallback** — The parser now loads models with missing or incomplete external weight data by falling back to graph-structure-only parsing. Corrupt or stub ONNX files get a clean error message instead of a traceback.
+- **3D viewer** — Interactive space-themed visualization with WASD fly-through, motif region highlighting, ShadowLogic overlays, per-node structural profiles, counterfactual editing, and collapsible side panels. See [3D Visualization](#3d-visualization).
+
 The tool is ONNX-only. It does not require PyTorch or a CUDA toolkit.
 
 ## What it does
