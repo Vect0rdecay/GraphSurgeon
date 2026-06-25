@@ -28,16 +28,16 @@ Motif hits describe attack landscape (what attack types the architecture enables
 
 | Field | How it's inferred |
 |-------|-------------------|
-| Hidden dimension | Mode of 1D weight shapes across LayerNorm, RMSNorm, and SimplifiedLayerNormalization nodes |
-| Vocab size | First dimension of embedding weights (Gather/GatherBlockQuantized), cross-validated against LM head output |
-| MLP intermediate size | Output dimension of gate/up projection weights (larger than hidden dim, not vocab-sized) |
-| Max position embeddings | First dimension of cos_cache/sin_cache initializers or positional embedding tensors |
-| RoPE theta | Reverse-engineered from precomputed cos_cache tensor values; falls back to inv_freq tensors or RotaryEmbedding node attributes |
-| Tied embeddings | Detects shared initializers between embedding and LM head nodes (handles both direct sharing and quantized scale/zero-point sharing) |
-| Conv groups | Group attribute from Conv nodes (reported when > 1) |
+| Hidden dimension | Mode of 1D weight shapes across normalization nodes (LayerNormalization, SimplifiedLayerNormalization, SkipSimplifiedLayerNormalization, SkipLayerNormalization, RMSNormalization). Falls back to most common MatMul/MatMulNBits weight dimension, then Conv output channels. |
+| Vocab size | First dimension of embedding weights (Gather/GatherBlockQuantized nodes), combined with LM head output dimension from the final MatMul/MatMulNBits/Gemm. Returns the most frequent candidate when multiple signals agree. |
+| MLP intermediate size | Output dimension of gate/up projection weights identified by node name (gate_proj, up_proj, fc1, c_fc, wi). Falls back to MatMul nodes followed by Mul/Sigmoid patterns. |
+| Max position embeddings | First dimension of initializers whose names contain cos_cache, sin_cache, cos_cached, sin_cached, pos_embed, position_embed, or wpe. |
+| RoPE theta | Reverse-engineered from precomputed cos_cache tensor values; falls back to initializer tensors with names containing inv_freq, freqs, or rope_freq, then RotaryEmbedding node attributes. Snaps to common theta values (10000, 500000, 1000000, etc.) within 1% tolerance. |
+| Tied embeddings | Detects initializers consumed by both an embedding node (Gather/GatherBlockQuantized/Embedding) and a late-graph or lm_head node (MatMul/MatMulNBits/Gemm/Transpose). Also checks for shared base weight names after stripping quantization suffixes. |
+| Conv groups | Group attribute from Conv nodes (reported only when > 1) |
 | Quantization format | Detected from MatMulNBits bit-width attributes or DequantizeLinear presence |
 
-Works across quantization formats (fp32, fp16, Q4, Q8) and model families (transformers, hybrid conv+attention, CNNs). When external weight data is unavailable, shape-based fields still resolve — only RoPE theta requires the actual tensor bytes.
+Tested on Liquid AI LFM2.5 models (hybrid gated conv + GQA + RoPE + SwiGLU) across fp32, fp16, Q4, and Q8 quantization formats. The hidden dimension and MLP size fallback paths cover standard MatMul-based and Conv-based architectures, but have not been validated on pure CNNs or standard transformer-only models. When external weight data is unavailable, shape-based fields still resolve — only RoPE theta requires actual tensor bytes (all three recovery paths — cos_cache, inv_freq, and node attributes — depend on loaded data or non-zero attributes).
 
 Example output:
 
@@ -208,11 +208,11 @@ parser = ONNXGraphParser()
 graph = parser.parse_file("model.onnx")
 arch = infer_architecture(graph)
 
-print(arch.hidden_dim)        # 2048
-print(arch.vocab_size)        # 65536
-print(arch.rope_theta)        # 1000000.0
-print(arch.tied_embeddings)   # True
-print(arch.to_dict())         # only non-None fields
+print(arch.hidden_dim)        # e.g. 2048
+print(arch.vocab_size)        # e.g. 65536
+print(arch.rope_theta)        # e.g. 1000000.0, or None
+print(arch.tied_embeddings)   # True, or None if not detected
+print(arch.to_dict())         # dict of non-None fields only
 ```
 
 ### Optional weight statistics
