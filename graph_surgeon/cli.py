@@ -472,7 +472,11 @@ def cmd_inspect(args):
         print(f"Error: file not found: {args.model}", file=sys.stderr)
         return 1
     parser = ONNXGraphParser()
-    g = parser.parse_file(args.model)
+    try:
+        g = parser.parse_file(args.model)
+    except Exception as e:
+        print(f"Error: failed to parse {args.model}: {e}", file=sys.stderr)
+        return 1
     op_counts = {}
     for n in g.nodes:
         op_counts[n.op_type] = op_counts.get(n.op_type, 0) + 1

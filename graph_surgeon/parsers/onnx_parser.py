@@ -88,7 +88,7 @@ class ONNXGraphParser:
             import onnx
             try:
                 self.model = onnx.load(filepath)
-            except (ValueError, FileNotFoundError):
+            except Exception:
                 self.model = onnx.load(filepath, load_external_data=False)
             return self._parse_model(self.model)
         except ImportError:
