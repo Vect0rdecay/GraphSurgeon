@@ -334,7 +334,7 @@ def _infer_tied_embeddings(
 ) -> Tuple[bool, Optional[List[str]]]:
     """Detect whether embedding and LM head weights are tied."""
     _EMBED_OPS = {"Gather", "GatherBlockQuantized", "Embedding"}
-    _HEAD_OPS = {"MatMul", "MatMulNBits", "Gemm"}
+    _HEAD_OPS = {"MatMul", "MatMulNBits", "Gemm", "Transpose"}
     num_nodes = len(graph.nodes)
 
     shared_names = []
@@ -343,7 +343,9 @@ def _infer_tied_embeddings(
             continue
         has_embed = any(n.op_type in _EMBED_OPS for n in consumers)
         has_head = any(
-            n.op_type in _HEAD_OPS and node_order.get(n.name, 0) > num_nodes * 0.8
+            n.op_type in _HEAD_OPS
+            and (node_order.get(n.name, 0) > num_nodes * 0.8
+                 or "lm_head" in n.name.lower())
             for n in consumers
         )
         if has_embed and has_head:
