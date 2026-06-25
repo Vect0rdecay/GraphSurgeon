@@ -158,6 +158,11 @@ def main(argv=None):
         metavar="MODEL.onnx",
         help="Path to the ONNX model file (required)",
     )
+    p_inspect.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit full inspect report as JSON on stdout",
+    )
     p_inspect.set_defaults(func=cmd_inspect)
 
     # topology
@@ -461,6 +466,7 @@ def main(argv=None):
 
 def cmd_inspect(args):
     from graph_surgeon.parsers.onnx_parser import ONNXGraphParser
+    from graph_surgeon.analysis.architecture import infer_architecture
 
     if not os.path.exists(args.model):
         print(f"Error: file not found: {args.model}", file=sys.stderr)
@@ -470,6 +476,23 @@ def cmd_inspect(args):
     op_counts = {}
     for n in g.nodes:
         op_counts[n.op_type] = op_counts.get(n.op_type, 0) + 1
+
+    arch = infer_architecture(g)
+
+    if getattr(args, "json", False):
+        import json
+        report = {
+            "graph": g.name,
+            "nodes": len(g.nodes),
+            "inputs": [i.name for i in g.inputs],
+            "outputs": [o.name for o in g.outputs],
+            "initializers": len(g.initializers),
+            "op_counts": dict(sorted(op_counts.items(), key=lambda x: -x[1])),
+            "architecture": arch.to_dict(),
+        }
+        print(json.dumps(report, indent=2))
+        return 0
+
     print(f"Graph: {g.name}")
     print(f"Nodes: {len(g.nodes)}")
     print(f"Inputs: {[i.name for i in g.inputs]}")
@@ -478,6 +501,27 @@ def cmd_inspect(args):
     print("Op counts:")
     for op, c in sorted(op_counts.items(), key=lambda x: -x[1]):
         print(f"  {op}: {c}")
+
+    arch_dict = arch.to_dict()
+    if arch_dict:
+        print("Architecture:")
+        _LABELS = {
+            "hidden_dim": "Hidden dimension",
+            "vocab_size": "Vocab size",
+            "mlp_intermediate_size": "MLP intermediate size",
+            "max_position_embeddings": "Max position embeddings",
+            "rope_theta": "RoPE theta",
+            "tied_embeddings": "Tied embeddings",
+            "tied_initializer_names": "Tied initializers",
+            "conv_groups": "Conv groups",
+            "quantization_format": "Quantization",
+        }
+        for key, label in _LABELS.items():
+            val = arch_dict.get(key)
+            if val is not None:
+                if isinstance(val, float) and val == int(val):
+                    val = int(val)
+                print(f"  {label}: {val}")
     return 0
 
 
