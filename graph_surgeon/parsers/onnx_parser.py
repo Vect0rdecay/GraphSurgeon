@@ -86,7 +86,10 @@ class ONNXGraphParser:
         """Parse an ONNX file and extract the graph."""
         try:
             import onnx
-            self.model = onnx.load(filepath)
+            try:
+                self.model = onnx.load(filepath)
+            except (ValueError, FileNotFoundError):
+                self.model = onnx.load(filepath, load_external_data=False)
             return self._parse_model(self.model)
         except ImportError:
             # Fallback: parse protobuf directly
